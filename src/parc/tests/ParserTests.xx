@@ -1,0 +1,155 @@
+    
+#include "TestHarness.h"
+
+#include "../Parser.h"
+
+using namespace parc;
+
+TEST_CASE(Parser_Option)
+{
+	auto s = "\"parc\" { \"white-space\" \"ignore\" ; }";
+	
+	Lexer l(s);
+	
+	Parser p(l);
+	
+	auto g = p.GrammarRule();
+	
+	TEST_ASSERT(g->Packages.size() == 1);
+
+	PackageNode* pkg;
+	TEST_ASSERT(pkg = dynamic_cast<PackageNode*>(g->Packages[0]));
+	TEST_ASSERT(pkg->Name.s == "parc");
+	TEST_ASSERT(pkg->m_Definitions.size() == 1);
+
+	OptionNode* opt;
+	TEST_ASSERT(opt = dynamic_cast<OptionNode*>(pkg->m_Definitions[0]));
+	TEST_ASSERT(opt->Name.s == "white-space");
+	TEST_ASSERT(opt->Value.s == "ignore");
+}
+
+TEST_CASE(Parser_TokenLiteral)
+{
+	auto s = "\"parc\" { token = \"a\" ; }";
+	
+	Lexer l(s);
+	
+	Parser p(l);
+	
+	auto g = p.GrammarRule();
+	
+	TEST_ASSERT(g->Packages.size() == 1);
+
+	PackageNode* pkg;
+	TEST_ASSERT(pkg = dynamic_cast<PackageNode*>(g->Packages[0]));
+	TEST_ASSERT(pkg->Name.s == "parc");
+	TEST_ASSERT(pkg->m_Definitions.size() == 1);
+
+	TokenNode* tok;
+	TEST_ASSERT(tok = dynamic_cast<TokenNode*>(pkg->m_Definitions[0]));
+	TEST_ASSERT(tok->m_Id.s == "token");
+	TEST_ASSERT(tok->m_Expressions.size() == 1);
+
+	TokenLiteralNode* tokLit;
+	TEST_ASSERT(tokLit = dynamic_cast<TokenLiteralNode*>(tok->m_Expressions[0]));
+	TEST_ASSERT(tokLit->m_Value.s == "a");
+}
+
+TEST_CASE(Parser_TokenLiteralRange)
+{
+	auto s = "\"parc\" { token = \"a\" - \"z\" ; }";
+	
+	Lexer l(s);
+	
+	Parser p(l);
+	
+	auto g = p.GrammarRule();
+	
+	TEST_ASSERT(g->Packages.size() == 1);
+
+	PackageNode* pkg;
+	TEST_ASSERT(pkg = dynamic_cast<PackageNode*>(g->Packages[0]));
+	TEST_ASSERT(pkg->Name.s == "parc");
+	TEST_ASSERT(pkg->m_Definitions.size() == 1);
+
+	TokenNode* tok;
+	TEST_ASSERT(tok = dynamic_cast<TokenNode*>(pkg->m_Definitions[0]));
+	TEST_ASSERT(tok->m_Id.s == "token");
+	TEST_ASSERT(tok->m_Expressions.size() == 1);
+
+	TokenLiteralRangeNode* tokRange;
+	TEST_ASSERT(tokRange = dynamic_cast<TokenLiteralRangeNode*>(tok->m_Expressions[0]));
+	TEST_ASSERT(tokRange->m_Begin.s == "a");
+	TEST_ASSERT(tokRange->m_End.s == "z");
+}
+
+TEST_CASE(Parser_TokenAny)
+{
+	auto s = "\"parc\" { token = \"a\" | \"b\" | \"c\" ; }";
+	
+	Lexer l(s);
+	
+	Parser p(l);
+	
+	auto g = p.GrammarRule();
+	
+	TEST_ASSERT(g->Packages.size() == 1);
+
+	PackageNode* pkg;
+	TEST_ASSERT(pkg = dynamic_cast<PackageNode*>(g->Packages[0]));
+	TEST_ASSERT(pkg->Name.s == "parc");
+	TEST_ASSERT(pkg->m_Definitions.size() == 1);
+
+	TokenNode* tok;
+	TEST_ASSERT(tok = dynamic_cast<TokenNode*>(pkg->m_Definitions[0]));
+	TEST_ASSERT(tok->m_Id.s == "token");
+	TEST_ASSERT(tok->m_Expressions.size() == 1);
+
+	AnyNode* any;
+	TEST_ASSERT(any = dynamic_cast<AnyNode*>(tok->m_Expressions[0]));
+	TEST_ASSERT(any->m_Expressions.size() == 3);
+
+	TokenLiteralNode* a;
+	TEST_ASSERT(a = dynamic_cast<TokenLiteralNode*>(any->m_Expressions[0]));
+	TEST_ASSERT(a->m_Value.s == "a");
+
+	TokenLiteralNode* b;
+	TEST_ASSERT(b = dynamic_cast<TokenLiteralNode*>(any->m_Expressions[1]));
+	TEST_ASSERT(b->m_Value.s == "b");
+
+	TokenLiteralNode* c;
+	TEST_ASSERT(c = dynamic_cast<TokenLiteralNode*>(any->m_Expressions[2]));
+	TEST_ASSERT(c->m_Value.s == "c");
+}
+
+
+TEST_CASE(Parser_TokenRepetition)
+{
+	auto s = "\"parc\" { token = \"a\" + ; }";
+	
+	Lexer l(s);
+	
+	Parser p(l);
+	
+	auto g = p.GrammarRule();
+	
+	TEST_ASSERT(g->Packages.size() == 1);
+
+	PackageNode* pkg;
+	TEST_ASSERT(pkg = dynamic_cast<PackageNode*>(g->Packages[0]));
+	TEST_ASSERT(pkg->Name.s == "parc");
+	TEST_ASSERT(pkg->m_Definitions.size() == 1);
+
+	TokenNode* tok;
+	TEST_ASSERT(tok = dynamic_cast<TokenNode*>(pkg->m_Definitions[0]));
+	TEST_ASSERT(tok->m_Id.s == "token");
+	TEST_ASSERT(tok->m_Expressions.size() == 1);
+
+	RepetitionNode* rep;
+	TEST_ASSERT(rep = dynamic_cast<RepetitionNode*>(tok->m_Expressions[0]));
+	TEST_ASSERT(rep->m_Cardinality.s == "+");
+
+	TokenLiteralNode* tokLit;
+	TEST_ASSERT(tokLit = dynamic_cast<TokenLiteralNode*>(rep->m_Expression));
+	TEST_ASSERT(tokLit->m_Value.s == "a");
+}

@@ -1,0 +1,112 @@
+--
+-- This is the complete PARC grammar. It is a PARC grammar that describes the PARC grammar.
+--
+
+--
+-- Comments start with double hyphen -- and last to the end of line. There are no multi-line comments.
+--
+
+"parc" { -- Define a new package, "parc".
+
+
+	"white-space" "ignore" ; -- The lexical analysis will disregard, all white-space tokens.
+
+	--
+	-- Tokens are identifiers that lead with a lower case letter
+	--
+
+	globalIdentifier = "A" - "Z" ( "A" - "Z" | "a" - "z" | "0" - "9" ) *
+		;
+
+	localIdentifier = "a" - "z" ( "A" - "Z" | "a" - "z" | "0" - "9" ) *
+		;
+
+	-- Tokens do not support projections, regex "(\\\\|\\"|[^\\"])*"
+	literal = "\"" ( "\\\\" | "\\\"" | ^ "\"" )* "\""
+		;
+
+	many = "*" ;
+
+	manyAtLeastOnce = "+" ;
+
+	manyOptional = "?" ;
+
+	--
+	-- Productions are identifiers that lead with a upper case letter
+	--
+
+	-- The Main production is the entry point to your grammar.
+	-- A PARC grammar is not required to define a Main production.
+	Main
+		= a : Package* => Grammar { PackageList = a }
+		;
+
+	Package
+		= a : Literal "{" b : ( Option | Token | Production ) * "}"
+			=> Package{ packageName = a, content = b }
+		;
+
+	Option
+		= a : literal b : literal ";"
+			=> Option{ Name = a, Value = b }
+
+	Token
+		= a : localIdentifier "=" b : TokenRep Projection? ";"
+			=> Token{ id = a, def = b }
+		;
+
+	TokenRep
+		= TokenDef
+		| a : TokenDef (b:many | b:manyAtLeastOnce | b:manyOptional) => TokenRepetition{ Pattern = a, Kind = b }
+		;
+
+	TokenDef
+		= TokenPrimary
+		| a:TokenPrimary ( "|" a:TokenDef )+ => Any{ Left = a }
+		| "(" a : TokenDef ")" => Eval{ Expression = a }
+		;
+
+	TokenPrimary
+		= a : literal => TokenLiteral{ value = a }
+		| "^" a : literal => TokenNegative{ value = a }
+		| a : literal "-" b : literal => TokenRange{ min = a, max = b }
+		;
+
+	Projection
+		= "=>" a : globalIdentifier "{" b : InitializerList "}" => Projection{ InitializerList = b }
+		| "=>" b : localIdentifier => LocalProjection{ Local = b }
+		;
+
+	InitializerList
+		= a : Initializer ("," a:Initializer)* => a
+		;
+
+	Initializer
+		= a : globalIdentifier "=" b : localIdentifier => Initializer{ Member = a, Local = b }
+		;
+
+	Production
+		= a : globalIdentifier "=" (b : Rule)+ => Production{ Name = a, Rules = b }
+		;
+
+	Rule
+		= a : localIdentifier ":" b:AnonymousRule => NamedRule{ Name = a, Rule = b }
+		| AnonymousRule
+		;
+
+	AnonymousRule
+		= a:PrimaryRule
+		| a:PrimaryRule (b:many | b:manyAtLeastOnce | b:manyOptional) => RepetitionRule{ Rule = a, Kind = b }
+		| a:PrimaryRule "|" b:AnonymousRule => ChoiceRule{ Left = a, Right = b }
+		;
+
+	PrimaryRule
+		= a : literal => LiteralRule{ Literal = a }
+		| a : localIdentifier => TokenRule{ Token = a }
+		| a : globalIdentifier => ProductionRule{ Production = a }
+		| "(" a:AnonymousRule ")" => EvalRule{ Rule = a }
+		;
+}
+
+-- Notes:
+-- There are no reserved keywords in PARC grammar.

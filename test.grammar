@@ -1,0 +1,33 @@
+
+-- This is the "Test" grammar
+"Test" {
+
+	ident = "A" - "Z" ( "A" - "Z" | "a" - "z" | "0" - "9" ) * ;
+
+	num = ( "0" - "9" ) + ;
+
+	comma = ","	;
+
+	-- This is a production, it has a type constructor `Type` for a and b
+	Type = "type" a:ident "{" b:MemberList "}" => Type { typeName = a, memberList = b }
+		;
+
+	MemberList
+		= a:Member ( comma b:MemberList )* => MemberList { list = a, x = b }
+		;
+
+	-- but how does the above production fold into a list?
+
+	Member 
+		= num:num "=" alias:ident ( ":" Type )? => Member { id = Num, name = Ident, type = Type }
+		;
+
+	-- a a a
+
+	MemberList[Member, MemberList[Member, Member]]
+
+	-- a a a a
+
+	MemberList[Member, MemberList[Member, MemberList[Member, Member]]]
+
+}

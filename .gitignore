@@ -1,0 +1,24 @@
+<<<<<<< HEAD
+.tundra2.*
+t2-*
+Thumbs.db
+Desktop.ini
+.DS_Store
+=======
+
+*.suo
+*.user
+
+*.opensdf
+*.sdf
+
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+tundra-output
+.tundra-ancestors
+.tundra-relcache
+
+src/*/Debug
+>>>>>>> f2ff0af2f83975fb9b6689a259ecb6520b0eae7a
