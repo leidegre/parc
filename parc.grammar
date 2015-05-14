@@ -57,7 +57,7 @@
 
 	TokenRep
 		= TokenDef
-		| a : TokenDef (b:many | b:manyAtLeastOnce | b:manyOptional) => TokenRepetition{ Pattern = a, Kind = b }
+		| a : TokenDef b : (many | manyAtLeastOnce | manyOptional)? => TokenRepetition{ Pattern = a, Kind = b }
 		;
 
 	TokenDef

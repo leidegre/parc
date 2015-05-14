@@ -1,16 +1,20 @@
 The design goals of parc are:
 
 - Simple
-- Disambiguous
+- Unambiguous
 - Fast
 
-parc has been built specifically for LL(1) context-free grammar. In other words, the lexer (and parser) that parc generates run in O(n) but require that the lexer (or parser) can transition to it's next state given the next character (or token) of the input stream.
+parc is built specifically for deterministic context-free grammars. In other words, parc must be able to determine the next state transition from the top symbol.
 
-> **Note:** It's my own general belief that ambiguous languages are of little practical use. Stretch goals for parc is of course to be able to handle any mainstream programming language but we will initially limit ourselves to these LL(1) context-free grammars and focus on DFA construction and fast run-time performance.
+> **Note:** It's my own general belief that ambiguous languages are of little practical use. The goal for parc is to be able to process any mainstream programming language but will initially focus on deterministic context-free grammars, DFA construction and pushdown automatons with fast O(n) run-time performance (to the extent possible).
 
-The parc backend is decoupled from it's frontend. By this we mean that the main parc program can interpret the grammar and execute any production for some text input. The result is a message pack (see http://msgpack.org/) dynamic syntax tree and it's why parc has support for projections (similar to [the now defunct project] Microsoft Oslo's' M language had). The projections in the parc grammar control the syntax tree construction and the labes that the syntax tree is assigned.
+parc is an execution environment and as such its front-/backend is decoupled from each other. The parc frontend processes parc grammar and builds a deterministic finite automaton and pushdown automaton representation that can be used to perform lexical analysis and textual processing. The parc backend takes these concepts and processes text. Constructing a syntax tree.
 
-The parc frontend accept this dynamic syntax tree which is a complete rendition of the input. Through the use of syntax trivia (concept borrowed from the Microsoft Roslyn Compiler Infrastructure) the original input can always be reconstructed from the syntax tree (even if it is ill-formed).
+The result is a message pack (see http://msgpack.org/) object graph that can be used to add more deep semantic to text (such as syntax highlighting).
+
+tree and it's why parc has support for projections (similar to [the now defunct project] Microsoft Oslo's' M language had). The projections in the parc grammar control the syntax tree construction and the labes that the syntax tree is assigned.
+
+(concept borrowed from the Microsoft Roslyn Compiler Infrastructure) the original input can always be reconstructed from the syntax tree (even if it is ill-formed).
 
 ## Tokenization (lexical analysis)
 
@@ -36,29 +40,47 @@ The above simple rules form the basis for a regular language construct that is u
 
 Note that the following are all examples of the same, identical token (these are ambiguous and illegal).
 
-    token = "A" "B" "C" ;
-    token = "A" - "C" ;
-    token = "ABC" ;
+    token1 = "A" "B" "C" ;
+    token2 = "A" - "C" ;
+    token3 = "ABC" ;
 
 Token (or production) rules cannot start with an optional repetition.
 
-    token = "A" * ; -- illegal
-    token = "A" ? ; -- illegal
-    token = "A" + ; -- OK
+    token1 = "A" * ; -- illegal
+    token2 = "A" ? ; -- illegal
+    token3 = "A" + ; -- OK
 
-parc will reject any token rules that results in an ambiguous (or non-deterministic) lexer. It will tell you exactly what the issue is what what you need to do to disambiguate the language rules.
+parc will reject any token rule that results in an ambiguous (or non-deterministic) lexer. It will tell you exactly what the issue is what what you need to do to disambiguate the language rules.
 
-Thompson's Construction Algorithm
-==
+There's also an unary complement operator that can be used to match anything which does not fall within a specific range.
 
-Three basic rules. Empty expression, symbol and union (NFA).
+    token1 = ^ "A" - "B" ;
 
-We then express our extensions in the form of these rules.
+This is useful to match a typical C-style string with any number of optional escape sequences in it.
 
-"A" - "C" -> "A" | "B" | "C"
-"A" +     -> "A" "A" *
-"A" ?     -> "A" | Empty
+    c_string = "\"" (^("\\" | "\"")* ("\\" ("\\" | "\""))?)* "\"" ;
 
-Complement sucks ass.
+The above token will match a quotation mark (") followed by anything which isn't a quotation mark or escape character (\). If it encounters either it will stop and accept an escape sequence and optionally repeat.
 
-Alphabet construction. Even if we define a character range that span the entirety of the Unicode code space we only need to define an alphabet member for each situation in which the character is used in a unique state transition. Hence a negative character class `^ "\""` map the `\"` character to an exit state and everything else to a accept state.
+The above parc token rule is identical to the below regular expression.
+
+    "([^\\"]*(\\("|\\))?)*"
+
+We can break down this regular expression into parc syntax in the following way.
+
+    "        -> "\""
+    (        -> (
+     [^\\"]* -> ^ ( "\\" | "\"" ) *
+     (\\     -> ( "\\"
+      ("|\\) -> ( "\"" | "\\" )
+     )?      -> ) ?
+    )*       -> ) *
+    "        -> "\""
+
+The difference is mostly in the way parc expects all characters to be encoded as strings. Regular expression character classes are simply choices in parc. `[0a!]` -> `"0" | "a" | "!"`. Note that a regular express does not allow more than one character per character class nor does it support nested character classes. parc does as long as the rules of determinism are followed.
+
+### Graph builder algorithm
+
+parc's lexer construction algorithm builds a decision tree based on token rules.
+
+## Parsing (recursive descent parsing using pushdown automaton)

@@ -4,6 +4,8 @@
 #include <iostream>
 
 int main(int argc, char* argv[]) {
-  TestManager::GetInstance()->Run();
+  if (!TestManager::GetInstance()->Run()) {
+    return 1;
+  }
   return 0;
 }

@@ -11,6 +11,12 @@ BEGIN_TEST_CASE("Coding_Utf8DecoderEmptyStringTest") {
 }
 END_TEST_CASE
 
+BEGIN_TEST_CASE("Coding_Utf8DecoderBadEncodingStringTest") {
+  Utf8Decoder decoder("\xff");
+  ASSERT_TRUE(!decoder.Load());  // Cannot load \xff
+}
+END_TEST_CASE
+
 BEGIN_TEST_CASE("Coding_Utf8DecoderSingleAsciiCharacterTest") {
   Utf8Decoder decoder("A");
   ASSERT_TRUE(decoder.Load());

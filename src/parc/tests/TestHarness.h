@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 class TestCase;
@@ -10,7 +11,7 @@ class TestManager {
 
   void Register(TestCase* test_case);
 
-  void Run();
+  bool Run();
 
  private:
   TestCase* test_case_;
@@ -21,6 +22,7 @@ class TestManager {
 };
 
 struct TestContext {
+  std::string output_;
   char message_[2048];
 };
 
@@ -61,3 +63,5 @@ namespace {                                                             \
   TEST_CONCAT(test_case_, __LINE__); \
   \
 }
+
+#define TEST_OUTPUT(s) test_context_->output_.append(s)

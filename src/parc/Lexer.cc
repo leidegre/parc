@@ -66,6 +66,18 @@ Token Lexer::Next() {
       inp_.Read();
       return Token(Token::kQuestionMark, inp_.Accept(), leading_trivia);
     }
+    case '{': {
+      inp_.Read();
+      return Token(Token::kLeftBrace, inp_.Accept(), leading_trivia);
+    }
+    case '|': {
+      inp_.Read();
+      return Token(Token::kPipe, inp_.Accept(), leading_trivia);
+    }
+    case '}': {
+      inp_.Read();
+      return Token(Token::kRightBrace, inp_.Accept(), leading_trivia);
+    }
     default: {
       // Global (production)
       if (Between<'A', 'Z'>(inp_.Peek())) {

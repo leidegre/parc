@@ -23,7 +23,7 @@ BEGIN_TEST_CASE("Lexer_GlobalTokenTest") {
 }
 END_TEST_CASE
 
-BEGIN_TEST_CASE("Lexer_LocalTokenDefinitionTest") {
+BEGIN_TEST_CASE("Lexer_TokenDefinitionTest") {
   Lexer lex;
   lex.SetInput(Utf8Decoder("local = \"A\" ;"));
   auto tok = lex.Next();
@@ -34,6 +34,20 @@ BEGIN_TEST_CASE("Lexer_LocalTokenDefinitionTest") {
   ASSERT_TRUE(tok.GetType() == Token::kStringLiteral);
   tok = lex.Next();
   ASSERT_TRUE(tok.GetType() == Token::kSemicolon);
+  tok = lex.Next();
+  ASSERT_TRUE(tok.GetType() == Token::kEndOfFile);
+}
+END_TEST_CASE
+
+BEGIN_TEST_CASE("Lexer_PackageDefinitionTest") {
+  Lexer lex;
+  lex.SetInput(Utf8Decoder("\"AAAA\" {}"));
+  auto tok = lex.Next();
+  ASSERT_TRUE(tok.GetType() == Token::kStringLiteral);
+  tok = lex.Next();
+  ASSERT_TRUE(tok.GetType() == Token::kLeftBrace);
+  tok = lex.Next();
+  ASSERT_TRUE(tok.GetType() == Token::kRightBrace);
   tok = lex.Next();
   ASSERT_TRUE(tok.GetType() == Token::kEndOfFile);
 }
