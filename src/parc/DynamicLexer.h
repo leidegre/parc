@@ -54,6 +54,10 @@ class DynamicLexerNode {
     flags_ |= kAccept;
   }
 
+  DynamicLexerNode* Define(int character) {
+    return Define(character, character);
+  }
+
   DynamicLexerNode* Define(int lower, int upper, int flags = 0);
 
   const DynamicLexerNode* GetNextState() const { return next_state_; }
@@ -75,13 +79,13 @@ class DynamicLexerNode {
   DynamicLexerNode* next_;  // intrusive linked list ptr
 };
 
-class DynamicLexer {
+class DynamicLexer : public TokenInputStream {
  public:
   DynamicLexer(const DynamicLexerNode* root) : root_(root) {}
 
   void SetInput(Utf8Decoder inp) { inp_ = inp; }
 
-  Token Next();
+  virtual Token Next() override;
 
  private:
   const DynamicLexerNode* root_;

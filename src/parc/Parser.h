@@ -7,7 +7,7 @@
 
 namespace parc {
 // forward declarations
-class SyntaxNode;
+class SyntaxTree;
 
 template <class TToken, class TLexer>
 class ParserBase {
@@ -58,16 +58,16 @@ class Parser : public ParserBase<Token, Lexer> {
  public:
   Parser() {}
 
-  SyntaxNode* MainRule();
+  SyntaxTree* MainRule();
 
-  SyntaxNode* FileRule();
+  SyntaxTree* FileRule();
 
-  SyntaxNode* PackageRule();
+  SyntaxTree* PackageRule();
 
-  SyntaxNode* TokenRule();
+  SyntaxTree* TokenRule();
 
-  SyntaxNode* TokenDefinitionRule();
+  SyntaxTree* TokenDefinitionRule();
 
-  SyntaxNode* TokenPrimaryRule();
+  SyntaxTree* TokenPrimaryRule();
 };
 }

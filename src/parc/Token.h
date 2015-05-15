@@ -41,4 +41,10 @@ class Token {
   Slice s_;
   Slice leading_trivia_;
 };
+
+class TokenInputStream {
+ public:
+  virtual Token Next() = 0;
+  virtual ~TokenInputStream() {}
+};
 }

@@ -7,53 +7,65 @@
 #include "Token.h"
 
 namespace parc {
-class SyntaxNode {
+class SyntaxTree {
  public:
-  virtual ~SyntaxNode() {}
-  virtual void DebugString(std::string* s, size_t indent = 0) = 0;
+  enum {
+    kNone,
+    kToken,
+    kSyntax,
+  };
+  SyntaxTree(int type) : type_(type) {}
+  int GetType() const { return type_; }
+  virtual void DebugString(std::string* s, size_t indent = (size_t)-1) = 0;
+  virtual ~SyntaxTree() {}
+
+ private:
+  int type_;
 };
 
-class SyntaxTree : public SyntaxNode {
+class TokenNode : public SyntaxTree {
  public:
-  SyntaxTree(const char* label) : label_(label) {}
+  TokenNode() : SyntaxTree(kToken), token_() {}
+  TokenNode(const Token& token) : SyntaxTree(kToken), token_(token) {}
   virtual void DebugString(std::string* s, size_t indent) override;
-  void Add(SyntaxNode* syntax) {
+  const Token& GetToken() const { return token_; }
+
+ private:
+  Token token_;
+};
+
+class SyntaxNode : public SyntaxTree {
+ public:
+  SyntaxNode(const char* label) : SyntaxTree(kSyntax), label_(label) {}
+  virtual void DebugString(std::string* s, size_t indent) override;
+  void Add(SyntaxTree* syntax) {
     assert(syntax);
     tree_.push_back(syntax);
   }
 
  private:
   const char* label_;
-  std::vector<SyntaxNode*> tree_;
-};
-
-class TokenNode : public SyntaxNode {
- public:
-  TokenNode() : token_() {}
-  TokenNode(const Token& token) : token_(token) {}
-  virtual void DebugString(std::string* s, size_t indent) override;
-
-  Token token_;
+  std::vector<SyntaxTree*> tree_;
 };
 
 // user syntax tree
-class FileSyntax : public SyntaxTree {
+class FileSyntax : public SyntaxNode {
  public:
-  FileSyntax() : SyntaxTree("file") {}
+  FileSyntax() : SyntaxNode("file") {}
 };
 
-class PackageSyntax : public SyntaxTree {
+class PackageSyntax : public SyntaxNode {
  public:
-  PackageSyntax() : SyntaxTree("package") {}
+  PackageSyntax() : SyntaxNode("package") {}
 };
 
-class TokenDefinitionSyntax : public SyntaxTree {
+class TokenDefinitionSyntax : public SyntaxNode {
  public:
-  TokenDefinitionSyntax() : SyntaxTree("token-definition") {}
+  TokenDefinitionSyntax() : SyntaxNode("token-definition") {}
 };
 
-class TokenLiteralSyntax : public SyntaxTree {
+class TokenLiteralSyntax : public SyntaxNode {
  public:
-  TokenLiteralSyntax() : SyntaxTree("token-literal") {}
+  TokenLiteralSyntax() : SyntaxNode("token-literal") {}
 };
 }

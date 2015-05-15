@@ -11,13 +11,14 @@ void TestManager::Register(TestCase* test_case) {
   this->test_case_ = test_case;
 }
 
-bool TestManager::Run() {
+bool TestManager::Run(int flags) {
   int tests_run = 0, tests_failed = 0;
   TestCase* test_case = test_case_;
   while (test_case) {
     tests_run++;
     putchar('.');  // progress indicator
     TestContext test_context;
+    test_context.flags_ = flags;
     if (!test_case->Run(&test_context)) {
       tests_failed++;
       puts("");  // new line
