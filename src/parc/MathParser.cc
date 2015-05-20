@@ -9,6 +9,7 @@
 //  ;
 // PrimaryExpression = number
 //  | "(" Expression ")"
+//  | "[" a : Expression ("," b : Expression)* "]" => a + b
 //  ;
 
 namespace parc {
@@ -62,6 +63,19 @@ SyntaxTree* MathParser::ParsePrimaryExpression() {
     auto expr = ParseExpression();
     PARC_EXPECT(kMathRightParenthesis);
     return expr;
+  }
+  if (Accept(kMathLeftBracket)) {
+    auto list = new SyntaxNode("list");
+    int i = 0;
+    while (!Accept(kMathRightBracket)) {
+      if (i > 0) {
+        PARC_EXPECT(kMathComma);
+      }
+      auto expr = ParseExpression();
+      list->Add(expr);
+      i++;
+    }
+    return list;
   }
   return nullptr;
 }

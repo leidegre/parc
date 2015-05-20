@@ -37,6 +37,15 @@ parc::DynamicLexerNode* GetLexerTree() {
   auto right_paren = root->Define(')');
   right_paren->SetToken(kMathRightParenthesis);
 
+  auto left_bracket = root->Define('[');
+  left_bracket->SetToken(kMathLeftBracket);
+
+  auto right_bracket = root->Define(']');
+  right_bracket->SetToken(kMathRightBracket);
+
+  auto comma = root->Define(',');
+  comma->SetToken(kMathComma);
+
   return root;
 }
 }
@@ -66,5 +75,19 @@ BEGIN_TEST_CASE("RecursiveDescentParserTest") {
   syntax->DebugString(&s);
   TEST_OUTPUT(s);
   ASSERT_EQ("(+ (- 1 2) 3)", s);
+}
+END_TEST_CASE
+
+BEGIN_TEST_CASE("RecursiveDescentParserTest") {
+  using namespace parc;
+  DynamicLexer lexer(GetLexerTree());
+  lexer.SetInput(Slice("[1+2,3-4]"));
+  MathParser parser;
+  parser.SetInput(&lexer);
+  auto syntax = parser.Parse();
+  std::string s;
+  syntax->DebugString(&s);
+  TEST_OUTPUT(s);
+  ASSERT_EQ("(list (+ 1 2) (- 3 4))", s);
 }
 END_TEST_CASE
