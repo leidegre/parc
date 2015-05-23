@@ -91,6 +91,7 @@ But first we need to define a grammar. We'll use our math grammar for this.
 
     number = ("0" - "9") + ;
     operator = ("+" | "-" | "*" | "/") + ;
+
     Expression = PrimaryExpression
       | PrimaryExpression operator Expression
       ;
@@ -100,7 +101,7 @@ But first we need to define a grammar. We'll use our math grammar for this.
 
 The above grammar has two types of tokens (number and operator) but also introduces two implicitly defined tokens (left and right parenthesis).
 
-When the have to productions. Expression and PrimaryExpression. This distinction is necessary to avoid left-recursion.
+When the have two productions. `Expression` and `PrimaryExpression`. This distinction is necessary to avoid left-recursion.
 
 If we were to implement the above productions as a recursive decent parser it would look like this.
 
@@ -110,13 +111,14 @@ If we were to implement the above productions as a recursive decent parser it wo
         Expression();
       }
     }
+
     void PrimaryExpression() {
       if (Accept(kNumber)) {
         return;
       }
-      if (Accept(kMathLeftParenthesis)) {
+      if (Accept(kLeftParenthesis)) {
         Expression();
-        Expect(kMathRightParenthesis);
+        Expect(kRightParenthesis);
       }
     }
 
@@ -124,18 +126,120 @@ Writing the above kind of code is relatively straight forward. When you add synt
 
 The first thing we want to do here is to represent the choices that gets made in the form of a directed graph (or state machine).
 
-We define our initial state as the "root" node.
+We define our initial state as the "root" node and then our productions as such.
 
     root
+      +Expression
+    Expression
+      +PrimaryExpression
+      ?kOperator
+        +Expression
+        :return 3
+      :return 1
+    PrimaryExpression
+      ?kNumber
+        :return 1
+      ?kLeftParenthesis
+        +Expression
+        !kRightParenthesis
+        :return 3
 
-We then add the transition functions for the top-level production rules.
-
-    root
-      -kNumber-> number
-      -kMathLeftParenthesis-> eval
-
-We've now introduced two new nodes called "number" and "eval".
-
-The stack machine that we want to build using this looks something like this.
+The stack machine that we're trying to build looks like this.
 
 ![alt text](https://docs.google.com/drawings/d/1mrY-F6Afq4Ipbi-07Zp0MoJkSsSzjUlkmKt1H9cCkTA/pub?w=960&amp;h=600 "Recursive push/pop stack transitions")
+
+If we add tree construction (a return value) things get more interesting (we'll disregard error handling for now) but in essence whatever we leave on the stack after running a production rule is the return value, if the production does not result in a return value we don't have a matching production at this point (this implies error).
+
+Our parser graph has nodes and edges (state transitions).
+
+    class ParserTree {
+      public:
+        int flags_; // control flow, kAccept, kExpect, kPush, kTransition, kReturn
+        int token_;
+        ParserTree* tran_;
+        ParserTree* next_;
+        void Accept(int token);
+        void Expect(int token);
+        ParserTree* Push(ParserTree*);
+        void Append(ParserTree*);
+    };
+
+    ParserTree* root = new ParserTree();
+
+    ParserTree* expr = new ParserTree(); // Expression
+
+    ParserTree* pexp = new ParserTree(); // PrimaryExpression
+
+    expr->Push(pexp); // create implicit ParserTree node that unconditionally transitions to pexp
+
+    auto number = new ParserTree();
+    number->Accept(kNumber);
+    number->Return(0);
+
+    pexp->Append(number);
+
+    auto eval3 = new ParserTree();
+    eval3->Expect(kRightParenthesis);
+
+    auto eval2 = new ParserTree();
+    eval2->Push(expr);
+
+    eval2->Append(eval3);
+
+    auto eval = new ParserTree();
+    eval->Accept(kLeftParenthesis);
+    eval->TransitionTo(eval2);
+    eval->Return();
+
+    pexp->Append(eval);
+
+    auto expr2 = new ParserTree();
+    expr2->Accept(kOperator);
+    expr2->Push(expr);
+    expr2->Return(3, "binary");
+
+If we take a look at the above code we're getting very close to something that resembles an intermediate language (some kind of byte code).
+
+Essentially we have the following operations.
+
+Accept - conditional branch
+
+The accept instruction is a conditional operation, it has an inner body in the same way that an if statement has. That condition is whether the symbol at the front of the input token stream matches a particular kind of token.
+
+Transition - jump
+
+An unconditional branch instruction to jump to some other piece of code.
+
+Call - function call
+
+Very similar to how a jump instruction occurs except that we track where we left of so that we know where we should return to.
+
+Return - return from function call
+
+Transfer control back to the calling code. This is only possible if the control was transferred to this code though the use of the function call instruction.
+
+Our math grammar can then be expressed in the following instruction form.
+
+                0002     return 1
+    Primary:    0001     accept Number
+                0001        beq 0002
+                0001        jmp 0003
+                0004       call 0000
+                0005     expect RightParenthesis
+                0006     return 3
+                0003     accept LeftParenthesis
+                0003        beq 0004
+                0003        jmp 0007
+                0007     return
+                0008     return 1
+                0000       call 0001
+    Expression: 0000        jmp 0009
+                000A       call 0000
+                000B     return 3
+                0009     accept Operator
+                0009        beq 000A
+    Main:       000C       call 0000
+
+A stack machine implementation for interpreting the above is just a few lines of code and when needed it can be compiled down to microprocessor assembly.
+
+The way we generate the IL is interesting in-itself and may be worth taking a closer look if you wondering about that.
