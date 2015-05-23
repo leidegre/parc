@@ -84,3 +84,58 @@ The difference is mostly in the way parc expects all characters to be encoded as
 parc's lexer construction algorithm builds a decision tree based on token rules.
 
 ## Parsing (recursive descent parsing using pushdown automaton)
+
+To understand recursive decent parsing we'll be looking at a source implementation and then translate that into a stack machine (pushdown automaton).
+
+But first we need to define a grammar. We'll use our math grammar for this.
+
+    number = ("0" - "9") + ;
+    operator = ("+" | "-" | "*" | "/") + ;
+    Expression = PrimaryExpression
+      | PrimaryExpression operator Expression
+      ;
+    PrimaryExpression = number
+      | "(" Expression ")"
+      ;
+
+The above grammar has two types of tokens (number and operator) but also introduces two implicitly defined tokens (left and right parenthesis).
+
+When the have to productions. Expression and PrimaryExpression. This distinction is necessary to avoid left-recursion.
+
+If we were to implement the above productions as a recursive decent parser it would look like this.
+
+    void Expression() {
+      PrimaryExpression();
+      if (Accept(kOperator)) {
+        Expression();
+      }
+    }
+    void PrimaryExpression() {
+      if (Accept(kNumber)) {
+        return;
+      }
+      if (Accept(kMathLeftParenthesis)) {
+        Expression();
+        Expect(kMathRightParenthesis);
+      }
+    }
+
+Writing the above kind of code is relatively straight forward. When you add syntax tree construction and error handling it gets messy but still it's a straightforward methodology. The important part here is to remember that each choice has to consume a token and when no choice ends up consuming a token we have an error.
+
+The first thing we want to do here is to represent the choices that gets made in the form of a directed graph (or state machine).
+
+We define our initial state as the "root" node.
+
+    root
+
+We then add the transition functions for the top-level production rules.
+
+    root
+      -kNumber-> number
+      -kMathLeftParenthesis-> eval
+
+We've now introduced two new nodes called "number" and "eval".
+
+The stack machine that we want to build using this looks something like this.
+
+![alt text](https://docs.google.com/drawings/d/1mrY-F6Afq4Ipbi-07Zp0MoJkSsSzjUlkmKt1H9cCkTA/pub?w=960&amp;h=600 "Recursive push/pop stack transitions")
