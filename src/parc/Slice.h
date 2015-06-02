@@ -25,6 +25,10 @@ class Slice {
     return Slice(data_ + offset, size_ - offset);
   }
 
+  std::string ToString() const {
+    return IsEmpty() ? std::string() : std::string(data_, size_);
+  }
+
  private:
   const char* data_;
   size_t size_;

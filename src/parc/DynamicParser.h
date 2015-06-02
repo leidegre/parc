@@ -1,68 +1,100 @@
 #pragma once
 
-#include <stack>
+#include <cassert>
+#include "Slice.h"
 
 namespace parc {
-class TokenInputStream;
-class SyntaxTree;
+class DynamicParserByteCodeGenerator;
+class SymbolTable;
 
+// represents a recursive decent parser control flow graph.
 class DynamicParserNode {
  public:
-  DynamicParserNode() : next_(nullptr), tran_(nullptr), token_(0), flags_(0) {}
-
   enum {
     kNone,
-    kAccept = (1 << 0),
-    kExpect = (1 << 1),
+    kAccept,
+    kApply,
+    kSelect,
   };
 
-  void SetAccept(int token) {
-    token_ = token;
-    flags_ |= kAccept;
-  }
+ protected:
+  DynamicParserNode(int type) : type_(type), next_(nullptr), label_() {}
 
-  void SetExpect(int token) {
-    token_ = token;
-    flags_ |= kExpect;
-  }
+ public:
+  DynamicParserNode* GetNext() const { return next_; }
+  void SetNext(DynamicParserNode* next) { next_ = next; }
 
-  int GetToken() const { return token_; }
+  Slice GetLabel() const { return label_; }
+  void SetLabel(const Slice& label) { label_ = label; };
+  bool HasLabel() const { return !label_.IsEmpty(); }
 
-  int GetFlags() const { return flags_; }
-
-  const DynamicParserNode* GetNext() const { return next_; }
-
-  DynamicParserNode* SetNext(DynamicParserNode* next) { next_ = next; }
-
-  const DynamicParserNode* GetTransition() const { return tran_; }
-
-  void SetTransition(DynamicParserNode* transition) { tran_ = transition; }
-
-  void Append(DynamicParserNode* next) {
-    auto node = this;
-    while (node->next_ != nullptr) {
-      node = node->next_;
-    }
-    node->next_ = next;
-  }
+  virtual void Emit(DynamicParserByteCodeGenerator* byte_code_generator) = 0;
 
  private:
+  int type_;
   DynamicParserNode* next_;
-  DynamicParserNode* tran_;
-  int token_;
-  int flags_;
+  Slice label_;
 };
 
-class DynamicParser {
+// todo: How to deal with Expr ( "&&" | "||" ) Expr ?
+//       or anything where the choice is complex (like more than one condition)
+class DynamicParserAcceptNode
+    : public DynamicParserNode {  // todo: rename IfAccept?
  public:
-  DynamicParser(const DynamicParserNode* root) : parser_(), symbols_() {
-    parser_.push(root);
-  }
+  explicit DynamicParserAcceptNode(int token = 0,
+                                   DynamicParserNode* target = nullptr)
+      : DynamicParserNode(kAccept), token_(token), target_(target) {}
 
-  SyntaxTree* Parse(TokenInputStream* inp);
+  int GetToken() const { return token_; }
+  void SetToken(int token) { token_ = token; }
+
+  DynamicParserNode* GetTarget() const { return target_; }
+  void SetTarget(DynamicParserNode* target) { target_ = target; }
+
+  virtual void Emit(
+      DynamicParserByteCodeGenerator* byte_code_generator) override;
 
  private:
-  std::stack<const DynamicParserNode*> parser_;
-  std::stack<SyntaxTree*> symbols_;
+  int token_;
+  DynamicParserNode* target_;
+};
+
+class DynamicParserApplyNode : public DynamicParserNode {
+ public:
+  explicit DynamicParserApplyNode(DynamicParserNode* prod = nullptr)
+      : DynamicParserNode(kApply), prod_(prod) {}
+
+  DynamicParserNode* GetProduction() const { return prod_; }
+  void SetProduction(DynamicParserNode* prod) { prod_ = prod; }
+
+  virtual void Emit(
+      DynamicParserByteCodeGenerator* byte_code_generator) override;
+
+ private:
+  DynamicParserNode* prod_;
+};
+
+class DynamicParserSelectNode : public DynamicParserNode {
+ public:
+  // NOTE: A projection where the label is null implies a pop count of 0.
+  //       (It simply yields the syntax tree node at the top of the stack.)
+  explicit DynamicParserSelectNode(const char* type_name = nullptr,
+                                   int pop_count = 0)
+      : DynamicParserNode(kSelect),
+        type_name_(type_name),
+        pop_count_(pop_count) {}
+
+  Slice GetTypeName() const { return type_name_; }
+  void SetTypeName(const Slice& type_name) { type_name_ = type_name; }
+
+  int GetPopCount() const { return pop_count_; }
+  void SetPopCount(int pop_count) { pop_count_ = pop_count; }
+
+  virtual void Emit(
+      DynamicParserByteCodeGenerator* byte_code_generator) override;
+
+ private:
+  Slice type_name_;
+  int pop_count_;
 };
 }

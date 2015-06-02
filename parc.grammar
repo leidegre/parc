@@ -6,7 +6,7 @@
 -- Comments start with double hyphen -- and last to the end of line. There are no multi-line comments.
 --
 
-"parc" { -- Define a new package, "parc".
+"parc" { -- Define package "parc"
 
 
 	"white-space" "ignore" ; -- The lexical analysis will disregard, all white-space tokens.
@@ -42,8 +42,8 @@
 		;
 
 	Package
-		= a : Literal "{" b : ( Option | Token | Production ) * "}"
-			=> Package{ packageName = a, content = b }
+		= a : literal "{" b : ( Option | Token | Production ) * "}"
+			=> Package{ PackageName = a, Content = b }
 		;
 
 	Option
@@ -109,4 +109,4 @@
 }
 
 -- Notes:
--- There are no reserved keywords in PARC grammar.
+-- There are no reserved keywords.

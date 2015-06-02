@@ -198,6 +198,11 @@ Our parser graph has nodes and edges (state transitions).
     expr2->Push(expr);
     expr2->Return(3, "binary");
 
+Some important observations to point out.
+
+* The first node of a production rule is associated with a name (or label) in the symbol table, that is the name of the production. This is important because if we want to apply this production somewhere else we have to reference this node. A reference of this kind is the equivalent of calling a top-level function in a typical recursive decent parser.
+* An accept operation is a branching instruction, in other words, a conditional transfer of control to some other node. This transfer of control has to consume a token from the input stream. If there are no accept operations that can consume the next token from the input stream (and that token is not the end of file token) we have a syntax error.
+
 If we take a look at the above code we're getting very close to something that resembles an intermediate language (some kind of byte code).
 
 Essentially we have the following operations.
@@ -220,26 +225,67 @@ Transfer control back to the calling code. This is only possible if the control 
 
 Our math grammar can then be expressed in the following instruction form.
 
-                0002     return 1
-    Primary:    0001     accept Number
-                0001        beq 0002
-                0001        jmp 0003
-                0004       call 0000
-                0005     expect RightParenthesis
-                0006     return 3
-                0003     accept LeftParenthesis
-                0003        beq 0004
-                0003        jmp 0007
-                0007     return
-                0008     return 1
-                0000       call 0001
-    Expression: 0000        jmp 0009
-                000A       call 0000
-                000B     return 3
-                0009     accept Operator
-                0009        beq 000A
-    Main:       000C       call 0000
+    3:
+      pop      1
+      return
+    PrimaryExpression:
+      accept   kTokenNumber
+      beq      3
+      jmp      4
+    5:
+      call     1
+      jmp      6
+    7:
+      pop      3
+      return
+    6:
+      accept   kTokenRightParenthesis
+      beq      7
+      return
+    4:
+      accept   kTokenLeftParenthesis
+      beq      5
+      return
+    Expression:
+      call     PrimaryExpression
+      jmp      8
+    9:
+      call     Expression
+      jmp      10
+    10:
+      pop      3
+      return
+    8:
+      accept   kTokenOperator
+      beq      9
+      return
 
-A stack machine implementation for interpreting the above is just a few lines of code and when needed it can be compiled down to microprocessor assembly.
+A stack machine implementation for interpreting the above does not require a lot of code and when needed it can be further compiled down to microprocessor assembly.
 
 The way we generate the IL is interesting in-itself and may be worth taking a closer look if you wondering about that.
+
+### Virtual Execution Environment & Byte Code Representation
+
+The Virtual Execution Environment evaluation stack is a stack of 32-bit signed integer types.
+
+> **Note:** the byte code is emitted in the form of a msgpack array of integer types.
+
+    0x01 <int32> | accept <token>
+
+If the next symbol from the token input stream is equal to <token> push true on top of the evaluation stack otherwise push false
+
+    0x02 <int32> | beq <target>
+
+If the current value on top of the evaluation stack is non-zero (true) transfer control to the specified target instruction.
+
+    0x03 <int32> | jmp <target>
+
+Unconditionally transfer control to the specified target instruction.
+
+    0x04 <int32> | call <target>
+
+Push the return instruction address on top of the evaluation stack then transfer control to the specified target instruction.
+
+    0x05 | return
+
+Pop the return instruction address from the evaluation stack and transfer control to the target instruction.
