@@ -13,27 +13,33 @@ enum {
   kTokenRightParenthesis
 };
 DynamicParserNode* GetParser() {
-  // PrimaryExpression:
-  auto pexp = new DynamicParserAcceptNode(kTokenNumber);
-  pexp->SetLabel("PrimaryExpression");
-  pexp->SetTarget(new DynamicParserSelectNode("PrimitiveExpression", 1));
+  auto primary = new DynamicParserAcceptNode(kTokenNumber);
+  auto expr = new DynamicParserApplyNode(primary);
+  auto lparen = new DynamicParserAcceptNode(kTokenLeftParenthesis);
+  auto eval = new DynamicParserApplyNode(expr);
+  auto rparen = new DynamicParserAcceptNode(kTokenRightParenthesis);
+  auto binary = new DynamicParserAcceptNode(kTokenOperator);
+  auto expr2 = new DynamicParserApplyNode(expr);
 
-  // Expression:
-  auto expr = new DynamicParserApplyNode(pexp);
+  primary->SetLabel("PrimaryExpression");
+  primary->SetTarget(new DynamicParserReturnNode());
+  primary->SetNext(lparen);
+
+  rparen->SetTarget(new DynamicParserReturnNode());
+  rparen->SetNext(new DynamicParserErrorNode());
+
+  eval->SetNext(rparen);
+
+  lparen->SetTarget(eval);
+  lparen->SetNext(new DynamicParserReturnNode());
+
+  expr2->SetNext(new DynamicParserReturnNode());
+
+  binary->SetTarget(expr2);
+  binary->SetNext(new DynamicParserReturnNode());
+
   expr->SetLabel("Expression");
-
-  // Expression:
-  auto binary = new DynamicParserApplyNode(expr);
-  binary->SetNext(new DynamicParserSelectNode("BinaryExpression", 3));
-  expr->SetNext(new DynamicParserAcceptNode(kTokenOperator, binary));
-
-  // PrimaryExpression:
-  auto eval2 = new DynamicParserApplyNode(expr);
-  eval2->SetNext(new DynamicParserAcceptNode(
-      kTokenRightParenthesis,
-      new DynamicParserSelectNode("EvalExpression", 3)));
-  auto eval = new DynamicParserAcceptNode(kTokenLeftParenthesis, eval2);
-  pexp->SetNext(eval);
+  expr->SetNext(binary);
 
   return expr;
 }

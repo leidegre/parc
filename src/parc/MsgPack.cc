@@ -89,6 +89,36 @@ void WriteInteger(const uint32_t value, std::string* buf) {
   buf->append(1, (char)(value & 0xff));
 }
 
+void WriteInteger(const int32_t value, std::string* buf) {
+  if ((0 <= value) & (value <= 0x7f)) {  // 1 byte (7-bit positive integer)
+    buf->append(1, (char)value);
+    return;
+  }
+  if ((-32 <= value) & (value <= -1)) {  // 1 byte (5-bit negative integer)
+    buf->append(1, (char)value);
+    return;
+  }
+  // 2 bytes (8-bit signed integer)
+  if ((INT8_MIN <= value) & (value <= INT8_MAX)) {
+    buf->append(1, (char)0xd0);
+    buf->append(1, (char)value);
+    return;
+  }
+  // 3 bytes (16-bit big-endian signed integer)
+  if ((INT16_MIN <= value) & (value <= INT16_MAX)) {
+    buf->append(1, (char)0xd1);
+    buf->append(1, (char)((value >> 8) & 0xff));
+    buf->append(1, (char)(value & 0xff));
+    return;
+  }
+  // 5 bytes (32-bit big-endian signed integer)
+  buf->append(1, (char)0xd2);
+  buf->append(1, (char)((value >> 24) & 0xff));
+  buf->append(1, (char)((value >> 16) & 0xff));
+  buf->append(1, (char)((value >> 8) & 0xff));
+  buf->append(1, (char)(value & 0xff));
+}
+
 void WriteInteger(const uint64_t value, std::string* buf) {
   if (value <= UINT32_MAX) {
     WriteInteger((uint32_t)value, buf);
@@ -100,35 +130,6 @@ void WriteInteger(const uint64_t value, std::string* buf) {
   buf->append(1, (char)((value >> 48) & 0xff));
   buf->append(1, (char)((value >> 40) & 0xff));
   buf->append(1, (char)((value >> 32) & 0xff));
-  buf->append(1, (char)((value >> 24) & 0xff));
-  buf->append(1, (char)((value >> 16) & 0xff));
-  buf->append(1, (char)((value >> 8) & 0xff));
-  buf->append(1, (char)(value & 0xff));
-}
-
-void WriteInteger(const int32_t value, std::string* buf) {
-  if ((0 <= value) & (value <= 0x7f)) {  // 1 byte (7-bit positive integer)
-    buf->append(1, (char)value);
-    return;
-  }
-  if ((-32 <= value) & (value <= -1)) {  // 1 byte (5-bit negative integer)
-    buf->append(1, (char)value);
-    return;
-  }
-  if ((-128 <= value) & (value <= 128)) {  // 2 bytes (8-bit signed integer)
-    buf->append(1, (char)0xd0);
-    buf->append(1, (char)value);
-    return;
-  }
-  // 3 bytes (16-bit big-endian signed integer)
-  if ((-32768 <= value) & (value <= 32767)) {
-    buf->append(1, (char)0xd1);
-    buf->append(1, (char)((value >> 8) & 0xff));
-    buf->append(1, (char)(value & 0xff));
-    return;
-  }
-  // 5 bytes (32-bit big-endian signed integer)
-  buf->append(1, (char)0xd2);
   buf->append(1, (char)((value >> 24) & 0xff));
   buf->append(1, (char)((value >> 16) & 0xff));
   buf->append(1, (char)((value >> 8) & 0xff));
@@ -216,7 +217,7 @@ bool Reader::Read(Value* value) {
         }
         case 0xd0: {
           value->type_ = Value::kInt8;
-          value->uint64_ = ReadInt8();
+          value->int64_ = ReadInt8();
           break;
         }
         case 0xd1: {

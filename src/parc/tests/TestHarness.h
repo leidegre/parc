@@ -22,7 +22,10 @@ class TestManager {
 };
 
 struct TestContext {
-  enum { kNone = 0, kVerbose = (1 << 0), };
+  enum {
+    kNone = 0,
+    kVerbose = (1 << 0),
+  };
   int flags_;
   std::string output_;
   char message_[2048];
@@ -46,6 +49,11 @@ class TestCase {
     return (strcmp(expected, actual) == 0);
   }
 
+  template <class T, class U>
+  static bool AssertEquals(T expected, U actual) {
+    return expected == static_cast<T>(actual);
+  }
+
   static const size_t kFormatValueBufferSize = 1024;
 
   static void FormatValue(const std::string& s, char* temp) {
@@ -55,6 +63,12 @@ class TestCase {
   static void FormatValue(const char* s, char* temp) {
     strncpy(temp, s, kFormatValueBufferSize);
     temp[kFormatValueBufferSize - 1] = 0;
+  }
+
+  static void FormatValue(int v, char* temp) { sprintf(temp, "%i", v); }
+
+  static void FormatValue(unsigned int v, char* temp) {
+    sprintf(temp, "%u", v);
   }
 
   static const char* GetFileName(const char* path) {

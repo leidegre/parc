@@ -83,15 +83,17 @@ The difference is mostly in the way parc expects all characters to be encoded as
 
 parc's lexer construction algorithm builds a decision tree based on token rules.
 
-## Parsing (recursive descent parsing using pushdown automaton)
+## Parsing (recursive descent parsing with a stack machine)
 
-To understand recursive decent parsing we'll be looking at a source implementation and then translate that into a stack machine (pushdown automaton).
+To understand recursive decent parsing we'll be looking at a reference source implementation and then translate that into a intermediate representation (byte code) that we can run in a stack machine.
 
-But first we need to define a grammar. We'll use our math grammar for this.
+Let's define a grammar. We'll be using a small grammar for that can be used to represent expressions (with explicit order of evaluation, parentheses).
 
+    --tokens
     number = ("0" - "9") + ;
-    operator = ("+" | "-" | "*" | "/") + ;
+    operator = "+" | "-" | "*" | "/" ;
 
+    --productions
     Expression = PrimaryExpression
       | PrimaryExpression operator Expression
       ;
@@ -99,11 +101,11 @@ But first we need to define a grammar. We'll use our math grammar for this.
       | "(" Expression ")"
       ;
 
-The above grammar has two types of tokens (number and operator) but also introduces two implicitly defined tokens (left and right parenthesis).
+The above grammar has two types of tokens (number and operator) and two implicitly defined tokens (left and right parenthesis). When then have two productions. `Expression` and `PrimaryExpression`. This distinction is necessary to avoid left recursion.
 
-When the have two productions. `Expression` and `PrimaryExpression`. This distinction is necessary to avoid left-recursion.
+> *Note:* Remember, left recursion can only happen if you apply a production recursively without consuming a token. As a general rule, every application of a production should be preceded with at least one token.
 
-If we were to implement the above productions as a recursive decent parser it would look like this.
+If we were to implement the above grammar in the form of a recursive decent parser it would look something like this.
 
     void Expression() {
       PrimaryExpression();
@@ -122,108 +124,71 @@ If we were to implement the above productions as a recursive decent parser it wo
       }
     }
 
-Writing the above kind of code is relatively straight forward. When you add syntax tree construction and error handling it gets messy but still it's a straightforward methodology. The important part here is to remember that each choice has to consume a token and when no choice ends up consuming a token we have an error.
+Writing the above kind of code is relatively straight forward. When you add syntax tree construction and error handling (which we don't have here) it gets tricky but still it's a straightforward methodology.
 
-The first thing we want to do here is to represent the choices that gets made in the form of a directed graph (or state machine).
-
-We define our initial state as the "root" node and then our productions as such.
-
-    root
-      +Expression
-    Expression
-      +PrimaryExpression
-      ?kOperator
-        +Expression
-        :return 3
-      :return 1
-    PrimaryExpression
-      ?kNumber
-        :return 1
-      ?kLeftParenthesis
-        +Expression
-        !kRightParenthesis
-        :return 3
-
-The stack machine that we're trying to build looks like this.
+From what we have so far, we can construct a control flow graph.
 
 ![alt text](https://docs.google.com/drawings/d/1mrY-F6Afq4Ipbi-07Zp0MoJkSsSzjUlkmKt1H9cCkTA/pub?w=960&amp;h=600 "Recursive push/pop stack transitions")
 
-If we add tree construction (a return value) things get more interesting (we'll disregard error handling for now) but in essence whatever we leave on the stack after running a production rule is the return value, if the production does not result in a return value we don't have a matching production at this point (this implies error).
+This control flow graph can be represented in code like this:
 
-Our parser graph has nodes and edges (state transitions).
-
-    class ParserTree {
+    class ControlFlowNode {
       public:
-        int flags_; // control flow, kAccept, kExpect, kPush, kTransition, kReturn
-        int token_;
-        ParserTree* tran_;
         ParserTree* next_;
-        void Accept(int token);
-        void Expect(int token);
-        ParserTree* Push(ParserTree*);
-        void Append(ParserTree*);
     };
 
-    ParserTree* root = new ParserTree();
+    class AcceptNode : public ControlFlowNode {
+      public:
+        int token_;
+        ParserTree* body_;
+    };
+    class ApplyNode : public ControlFlowNode {
+      public:
+        ParserTree* prod_;
+    };
+    class ReturnNode : public ControlFlowNode {
+      public:
+    };
 
-    ParserTree* expr = new ParserTree(); // Expression
+    // for example:
+    auto expr = new ApplyNode();
 
-    ParserTree* pexp = new ParserTree(); // PrimaryExpression
+    auto primary_expr = new AcceptNode();
+    primary_expr->token_ = kNumber;
+    primary_expr->body_ = new ReturnNode();
 
-    expr->Push(pexp); // create implicit ParserTree node that unconditionally transitions to pexp
+    auto rparen = new AcceptNode();
+    rparen->token_ = kRightParenthesis;
+    rparen->next_ = new ReturnNode();
 
-    auto number = new ParserTree();
-    number->Accept(kNumber);
-    number->Return(0);
+    auto eval = new ApplyNode();
+    eval->prod_ = expr;
+    primary_expr->next_ = rparen;
 
-    pexp->Append(number);
+    auto lparen = new AcceptNode();
+    lparen->token_ = kLeftParenthesis;
+    primary_expr->next_ = lparen;
 
-    auto eval3 = new ParserTree();
-    eval3->Expect(kRightParenthesis);
+    expr->prod_ = primary_expr;
 
-    auto eval2 = new ParserTree();
-    eval2->Push(expr);
+    auto expr2 = new ApplyNode();
+    expr2->prod_ = expr;
+    expr2->next_ = new ReturnNode();
 
-    eval2->Append(eval3);
+    auto op = new AcceptNode();
+    op->token_ = kOperator;
+    op->body_ = expr2;
+    op->next_ = new ReturnNode();
 
-    auto eval = new ParserTree();
-    eval->Accept(kLeftParenthesis);
-    eval->TransitionTo(eval2);
-    eval->Return();
+    expr->next_ = op;
 
-    pexp->Append(eval);
-
-    auto expr2 = new ParserTree();
-    expr2->Accept(kOperator);
-    expr2->Push(expr);
-    expr2->Return(3, "binary");
 
 Some important observations to point out.
 
 * The first node of a production rule is associated with a name (or label) in the symbol table, that is the name of the production. This is important because if we want to apply this production somewhere else we have to reference this node. A reference of this kind is the equivalent of calling a top-level function in a typical recursive decent parser.
 * An accept operation is a branching instruction, in other words, a conditional transfer of control to some other node. This transfer of control has to consume a token from the input stream. If there are no accept operations that can consume the next token from the input stream (and that token is not the end of file token) we have a syntax error.
 
-If we take a look at the above code we're getting very close to something that resembles an intermediate language (some kind of byte code).
-
-Essentially we have the following operations.
-
-Accept - conditional branch
-
-The accept instruction is a conditional operation, it has an inner body in the same way that an if statement has. That condition is whether the symbol at the front of the input token stream matches a particular kind of token.
-
-Transition - jump
-
-An unconditional branch instruction to jump to some other piece of code.
-
-Call - function call
-
-Very similar to how a jump instruction occurs except that we track where we left of so that we know where we should return to.
-
-Return - return from function call
-
-Transfer control back to the calling code. This is only possible if the control was transferred to this code though the use of the function call instruction.
-
-Our math grammar can then be expressed in the following instruction form.
+Essentially we can emit (or generate) following byte code for our simple but expressive grammar (and it's runnable).
 
     3:
       pop      1
@@ -260,32 +225,6 @@ Our math grammar can then be expressed in the following instruction form.
       beq      9
       return
 
-A stack machine implementation for interpreting the above does not require a lot of code and when needed it can be further compiled down to microprocessor assembly.
-
-The way we generate the IL is interesting in-itself and may be worth taking a closer look if you wondering about that.
-
 ### Virtual Execution Environment & Byte Code Representation
 
 The Virtual Execution Environment evaluation stack is a stack of 32-bit signed integer types.
-
-> **Note:** the byte code is emitted in the form of a msgpack array of integer types.
-
-    0x01 <int32> | accept <token>
-
-If the next symbol from the token input stream is equal to <token> push true on top of the evaluation stack otherwise push false
-
-    0x02 <int32> | beq <target>
-
-If the current value on top of the evaluation stack is non-zero (true) transfer control to the specified target instruction.
-
-    0x03 <int32> | jmp <target>
-
-Unconditionally transfer control to the specified target instruction.
-
-    0x04 <int32> | call <target>
-
-Push the return instruction address on top of the evaluation stack then transfer control to the specified target instruction.
-
-    0x05 | return
-
-Pop the return instruction address from the evaluation stack and transfer control to the target instruction.

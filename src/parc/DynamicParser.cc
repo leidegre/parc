@@ -23,25 +23,26 @@ void EmitTrace(DynamicParserNode* node,
                DynamicParserByteCodeGenerator* byte_code_generator,
                const char* comment = nullptr) {}
 #endif
+void EmitMetadata(DynamicParserNode* node,
+                  DynamicParserByteCodeGenerator* byte_code_generator,
+                  int* va) {
+  byte_code_generator->TryAddVirtualAddress(node, va);
+    if (node->HasLabel()) {
+      byte_code_generator->EmitLabelMetadata(*va, node->GetLabel());
+    }
+}
 void EmitNext(DynamicParserNode* node,
               DynamicParserByteCodeGenerator* byte_code_generator) {
   assert(node);
   if (auto next = node->GetNext()) {
     EmitTrace(node, byte_code_generator, "next");
-    int node_va;
-    byte_code_generator->TryAddVirtualAddress(node, &node_va);
     int next_va;
     if (byte_code_generator->TryAddVirtualAddress(next, &next_va)) {
-      if (node_va != next_va) {
-        byte_code_generator->EmitBranch(next_va);
-      }
+      byte_code_generator->EmitBranch(next_va);
       next->Emit(byte_code_generator);
     } else {
       byte_code_generator->EmitBranch(next_va);
     }
-  } else {
-    EmitTrace(node, byte_code_generator, "return");
-    byte_code_generator->EmitReturn();
   }
 }
 }
@@ -52,7 +53,7 @@ void DynamicParserAcceptNode::Emit(
     DynamicParserByteCodeGenerator* byte_code_generator) {
   EmitTrace(this, byte_code_generator, "enter");
   int va;
-  byte_code_generator->TryAddVirtualAddress(this, &va);
+  EmitMetadata(this, byte_code_generator, &va);
 
   assert(GetTarget() && "Target cannot be null");
   auto target = GetTarget();
@@ -62,7 +63,7 @@ void DynamicParserAcceptNode::Emit(
 
   EmitTrace(this, byte_code_generator, "emit");
 
-  byte_code_generator->EmitLabel(va, GetLabel());
+  byte_code_generator->EmitLabel(va);
   byte_code_generator->EmitAccept(GetToken());
   byte_code_generator->EmitBranchOnEqual(target_va);
 
@@ -73,7 +74,7 @@ void DynamicParserApplyNode::Emit(
     DynamicParserByteCodeGenerator* byte_code_generator) {
   EmitTrace(this, byte_code_generator, "enter");
   int va;
-  byte_code_generator->TryAddVirtualAddress(this, &va);
+  EmitMetadata(this, byte_code_generator, &va);
 
   assert(GetProduction() && "Production cannot be null");
   auto prod = GetProduction();
@@ -84,7 +85,7 @@ void DynamicParserApplyNode::Emit(
 
   EmitTrace(this, byte_code_generator, "emit");
 
-  byte_code_generator->EmitLabel(va, GetLabel());
+  byte_code_generator->EmitLabel(va);
   byte_code_generator->EmitCall(prod_va);
 
   EmitNext(this, byte_code_generator);
@@ -94,12 +95,40 @@ void DynamicParserSelectNode::Emit(
     DynamicParserByteCodeGenerator* byte_code_generator) {
   EmitTrace(this, byte_code_generator, "enter");
   int va;
-  byte_code_generator->TryAddVirtualAddress(this, &va);
+  EmitMetadata(this, byte_code_generator, &va);
 
   EmitTrace(this, byte_code_generator, "emit");
 
-  byte_code_generator->EmitLabel(va, GetLabel());
+  byte_code_generator->EmitLabel(va);
   byte_code_generator->EmitPop(GetPopCount());
+
+  EmitNext(this, byte_code_generator);
+}
+
+void DynamicParserErrorNode::Emit(
+    DynamicParserByteCodeGenerator* byte_code_generator) {
+  EmitTrace(this, byte_code_generator, "enter");
+  int va;
+  EmitMetadata(this, byte_code_generator, &va);
+
+  EmitTrace(this, byte_code_generator, "emit");
+
+  byte_code_generator->EmitLabel(va);
+  byte_code_generator->EmitError();
+
+  EmitNext(this, byte_code_generator);
+}
+
+void DynamicParserReturnNode::Emit(
+    DynamicParserByteCodeGenerator* byte_code_generator) {
+  EmitTrace(this, byte_code_generator, "enter");
+  int va;
+  EmitMetadata(this, byte_code_generator, &va);
+
+  EmitTrace(this, byte_code_generator, "emit");
+
+  byte_code_generator->EmitLabel(va);
+  byte_code_generator->EmitReturn();
 
   EmitNext(this, byte_code_generator);
 }

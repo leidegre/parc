@@ -42,8 +42,8 @@ struct Value {
 void WriteNull(std::string* buf);
 void WriteBoolean(const bool value, std::string* buf);
 void WriteInteger(const uint32_t value, std::string* buf);
-void WriteInteger(const uint64_t value, std::string* buf);
 void WriteInteger(const int32_t value, std::string* buf);
+void WriteInteger(const uint64_t value, std::string* buf);
 void WriteInteger(const int64_t value, std::string* buf);
 void WriteString(const Slice& value, std::string* buf);
 

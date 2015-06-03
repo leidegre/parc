@@ -44,6 +44,7 @@ class DynamicParserByteCodeGenerator {
     kByteCodePop = 0x0a,
     // kByteCodeVirtualAddress = 0x0b,
     kByteCodeTrace = 0x0c,
+    kByteCodeLabelMetadata = 0x0d,
   };
 
   void EmitNone();
@@ -53,7 +54,8 @@ class DynamicParserByteCodeGenerator {
   void EmitCall(int target);
   void EmitReturn();
   void EmitError();  // todo: how do we recover from error?
-  void EmitLabel(int va, const Slice& label);
+  void EmitLabel(int va);
+  void EmitLabelMetadata(int va, const Slice& label);
   void EmitNew(const Slice& type_name);
   void EmitPop(int pop_count);
   // void EmitVirtualAddress(int virtual_address);

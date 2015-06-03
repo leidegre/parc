@@ -4,8 +4,7 @@
 #include "Slice.h"
 
 namespace parc {
-class DynamicParserByteCodeGenerator;
-class SymbolTable;
+class DynamicParserByteCodeGenerator;  // this does not belong here
 
 // represents a recursive decent parser control flow graph.
 class DynamicParserNode {
@@ -15,6 +14,8 @@ class DynamicParserNode {
     kAccept,
     kApply,
     kSelect,
+    kError,
+    kReturn,
   };
 
  protected:
@@ -24,9 +25,9 @@ class DynamicParserNode {
   DynamicParserNode* GetNext() const { return next_; }
   void SetNext(DynamicParserNode* next) { next_ = next; }
 
+  bool HasLabel() const { return !label_.IsEmpty(); }
   Slice GetLabel() const { return label_; }
   void SetLabel(const Slice& label) { label_ = label; };
-  bool HasLabel() const { return !label_.IsEmpty(); }
 
   virtual void Emit(DynamicParserByteCodeGenerator* byte_code_generator) = 0;
 
@@ -96,5 +97,25 @@ class DynamicParserSelectNode : public DynamicParserNode {
  private:
   Slice type_name_;
   int pop_count_;
+};
+
+class DynamicParserErrorNode : public DynamicParserNode {
+ public:
+  explicit DynamicParserErrorNode() : DynamicParserNode(kError) {}
+
+  virtual void Emit(
+      DynamicParserByteCodeGenerator* byte_code_generator) override;
+
+ private:
+};
+
+class DynamicParserReturnNode : public DynamicParserNode {
+ public:
+  explicit DynamicParserReturnNode() : DynamicParserNode(kReturn) {}
+
+  virtual void Emit(
+      DynamicParserByteCodeGenerator* byte_code_generator) override;
+
+ private:
 };
 }

@@ -40,8 +40,14 @@ void DynamicParserByteCodeGenerator::EmitError() {
   msgpack::WriteInteger(kByteCodeError, &byte_code_stream_);
 }
 
-void DynamicParserByteCodeGenerator::EmitLabel(int va, const Slice& label) {
+void DynamicParserByteCodeGenerator::EmitLabel(int va) {
   msgpack::WriteInteger(kByteCodeLabel, &byte_code_stream_);
+  msgpack::WriteInteger(va, &byte_code_stream_);
+}
+
+void DynamicParserByteCodeGenerator::EmitLabelMetadata(int va,
+                                                       const Slice& label) {
+  msgpack::WriteInteger(kByteCodeLabelMetadata, &byte_code_stream_);
   msgpack::WriteInteger(va, &byte_code_stream_);
   msgpack::WriteString(label, &byte_code_stream_);
 }
@@ -80,7 +86,7 @@ void DynamicParserByteCodeGenerator::DebugString(
   while (reader.Read(&v)) {
     switch (v.int32_) {
       case kByteCodeNone: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "nop";
+        ss << "  " << std::setw(kOpCodeMaxWidth) << "nop" << std::endl;
         break;
       }
       case kByteCodeAccept: {
@@ -98,20 +104,21 @@ void DynamicParserByteCodeGenerator::DebugString(
         } else {
           ss << operand.int32_;
         }
+        ss << std::endl;
         break;
       }
       case kByteCodeBranchOnEqual: {
         msgpack::Value operand;
         reader.Read(&operand);
         ss << "  " << std::setw(kOpCodeMaxWidth) << "beq"
-           << " " << operand.int32_;
+           << " " << operand.int32_ << std::endl;
         break;
       }
       case kByteCodeBranch: {
         msgpack::Value operand;
         reader.Read(&operand);
         ss << "  " << std::setw(kOpCodeMaxWidth) << "jmp"
-           << " " << operand.int32_;
+           << " " << operand.int32_ << std::endl;
         break;
       }
       case kByteCodeCall: {
@@ -124,45 +131,53 @@ void DynamicParserByteCodeGenerator::DebugString(
         } else {
           ss << " " << operand.int32_;
         }
+        ss << std::endl;
         break;
       }
       case kByteCodeReturn: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "return";
+        ss << "  " << std::setw(kOpCodeMaxWidth) << "return" << std::endl;
         break;
       }
       case kByteCodeError: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "error";
+        ss << "  " << std::setw(kOpCodeMaxWidth) << "error" << std::endl;
+        break;
+      }
+      case kByteCodeLabelMetadata: {
+        msgpack::Value va;
+        reader.Read(&va);
+        msgpack::Value label;
+        reader.Read(&label);
+        labels.insert(std::make_pair(va.int32_, label.s_));  // remember this
         break;
       }
       case kByteCodeLabel: {
         msgpack::Value va;
         reader.Read(&va);
-        msgpack::Value label;
-        reader.Read(&label);
-        if (label.s_.IsEmpty()) {
-          ss << va.int32_ << ":";
+        auto it = labels.find(va.int32_);
+        if (it != labels.end()) {
+          ss << it->second.ToString();
         } else {
-          ss << label.s_.ToString() << ":";
-          labels.insert(std::make_pair(va.int32_, label.s_));  // remember this
+        ss << va.int32_;
         }
+        ss << ":" << std::endl;
         break;
       }
       case kByteCodeNewobj: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "newobj";
+        ss << "  " << std::setw(kOpCodeMaxWidth) << "newobj" << std::endl;
         break;
       }
       case kByteCodeLdstr: {
         msgpack::Value str;
         reader.Read(&str);
         ss << "  " << std::setw(kOpCodeMaxWidth) << "ldstr"
-           << " " << str.s_.ToString();
+           << " " << str.s_.ToString() << std::endl;
         break;
       }
       case kByteCodePop: {
         msgpack::Value pop_count;
         reader.Read(&pop_count);
         ss << "  " << std::setw(kOpCodeMaxWidth) << "pop"
-           << " " << pop_count.int32_;
+           << " " << pop_count.int32_ << std::endl;
         break;
       }
       // case kByteCodeVirtualAddress: {
@@ -174,15 +189,15 @@ void DynamicParserByteCodeGenerator::DebugString(
       case kByteCodeTrace: {
         msgpack::Value str;
         reader.Read(&str);
-        ss << str.s_.ToString();
+        ss << str.s_.ToString() << std::endl;
         break;
       }
       default: {
-        ss << "!unk_byte_code";
+        ss << "!unk_byte_code" << std::endl;
         break;
       }
     }
-    ss << std::endl;
+    ss;
   }
   s->append(ss.str());
 }
