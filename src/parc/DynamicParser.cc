@@ -27,9 +27,9 @@ void EmitMetadata(DynamicParserNode* node,
                   DynamicParserByteCodeGenerator* byte_code_generator,
                   int* va) {
   byte_code_generator->TryAddVirtualAddress(node, va);
-    if (node->HasLabel()) {
-      byte_code_generator->EmitLabelMetadata(*va, node->GetLabel());
-    }
+  if (node->HasLabel()) {
+    byte_code_generator->EmitLabelMetadata(*va, node->GetLabel());
+  }
 }
 void EmitNext(DynamicParserNode* node,
               DynamicParserByteCodeGenerator* byte_code_generator) {

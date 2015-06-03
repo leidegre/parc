@@ -157,7 +157,7 @@ void DynamicParserByteCodeGenerator::DebugString(
         if (it != labels.end()) {
           ss << it->second.ToString();
         } else {
-        ss << va.int32_;
+          ss << va.int32_;
         }
         ss << ":" << std::endl;
         break;
