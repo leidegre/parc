@@ -1,91 +1,81 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
 #include "Slice.h"
 
+#include <string>
+#include <unordered_map>
+
 namespace parc {
-// the byte code emitter is a two pass algorithm
-struct DynamicParserByteCodeMetadata;
-class DynamicParserByteCodeGenerator {
+class DynamicParserNode;
+
+#define MAKE_BYTE_CODE(op_code, num_args) ((op_code << 2) | num_args)
+
+struct ByteCode {
+  // byte code 0 (reserved)
+  // byte code 1-31 (single byte instruction)
+  // byte code 32-256 (two byte instruction)
+  // byte code >256 (three byte instruction)
+  // (a byte code can have at most 3 operands)
+  enum {
+    kAccept = MAKE_BYTE_CODE(1, 1),
+    kBranchOnEqual = MAKE_BYTE_CODE(2, 1),
+    kBranch = MAKE_BYTE_CODE(3, 1),
+    kCall = MAKE_BYTE_CODE(4, 1),
+    kReturn = MAKE_BYTE_CODE(5, 0),
+    kError = MAKE_BYTE_CODE(6, 0),
+    kLabel = MAKE_BYTE_CODE(7, 1),
+
+    kTrace = MAKE_BYTE_CODE(32, 1),
+
+    kMax = kTrace + 1,  // not a byte code
+  };
+};
+
+class ByteCodeGenerator {
  public:
   // non-copyable
-  DynamicParserByteCodeGenerator(const DynamicParserByteCodeGenerator&) =
-      delete;
-  DynamicParserByteCodeGenerator& operator=(
-      const DynamicParserByteCodeGenerator&) = delete;
+  ByteCodeGenerator(const ByteCodeGenerator&) = delete;
+  ByteCodeGenerator& operator=(const ByteCodeGenerator&) = delete;
 
-  DynamicParserByteCodeGenerator() : byte_code_stream_(), tlb_() {}
+  ByteCodeGenerator() : byte_code_(), metadata_(), tlb_() {}
 
-  // todo: struct?
-  struct ByteCode {
-    enum {
-      kNone,
-      kAccept,
-      kBranchOnEqual,
-      kBranch,
-    };
-    int op_code_;
-    // op_code metadata
-    int operand_count;
-  };
-  enum {
-    // lsb bits 0-1 (#operands), 2-6 (op code)
-    kByteCodeNone = 0x0,
-    kByteCodeAccept = 0x01,
-    kByteCodeBranchOnEqual = 0x02,
-    kByteCodeBranch = 0x03,
-    kByteCodeCall = 0x04,
-    kByteCodeReturn = 0x05,
-    kByteCodeError = 0x06,
-    kByteCodeLabel = 0x07,
-    kByteCodeNewobj = 0x08,
-    kByteCodeLdstr = 0x09,
-    kByteCodePop = 0x0a,
-    // kByteCodeVirtualAddress = 0x0b,
-    kByteCodeTrace = 0x0c,
-    kByteCodeLabelMetadata = 0x0d,
-  };
-
-  void EmitNone();
+  // byte code
   void EmitAccept(int token);
   void EmitBranchOnEqual(int target);
   void EmitBranch(int target);
   void EmitCall(int target);
   void EmitReturn();
-  void EmitError();  // todo: how do we recover from error?
-  void EmitLabel(int va);
-  void EmitLabelMetadata(int va, const Slice& label);
-  void EmitNew(const Slice& type_name);
-  void EmitPop(int pop_count);
-  // void EmitVirtualAddress(int virtual_address);
+  void EmitError();
+  void EmitLabel(int label);
   void EmitTrace(const Slice& msg);
 
-  int GetSize() const { return (int)byte_code_stream_.size(); }
+  // Virtual labels:
+  // what are these? these are virtual labels that identify where a piece of
+  // code starts. Since the code is typically generated hapazardly by following
+  // along the paths of the control flow graph we need an easy way to find
+  // things later (regardless of when they happened).
+  // todo: move DynamicParserNode away from this module
+  bool Bind(DynamicParserNode* node, int* label);
 
-  bool TryAddVirtualAddress(void* node, int* virtual_address) {
-    auto it = tlb_.find(node);
-    if (it == tlb_.end()) {
-      int va = (int)tlb_.size() + 1;
-      tlb_.insert(std::make_pair(node, va));
-      *virtual_address = va;
-      return true;
-    }
-    *virtual_address = it->second;
-    return false;
-  }
+  const std::string& GetByteCodeStream() const { return byte_code_; }
 
-  const std::string& GetByteCodeStream() const { return byte_code_stream_; }
+  // metadata
+  enum {
+    kMetadataLabel = 0x01,
+    kMetadataToken = 0x02,
+  };
 
-  void DebugString(std::string* s,
-                   DynamicParserByteCodeMetadata* metadata = nullptr) const;
+  void EmitMetadataLabel(int label, const Slice& name);
+  void EmitMetadataToken(int token, const Slice& name);
+
+  const std::string& GetMetadataStream() const { return metadata_; }
+
+  // debug
+  void DebugString(std::string* s) const;
 
  private:
-  std::string byte_code_stream_;
+  std::string byte_code_;
+  std::string metadata_;
   std::unordered_map<void*, int> tlb_;
-};
-
-struct DynamicParserByteCodeMetadata {
-  std::unordered_map<int, Slice> tokens_;
 };
 }

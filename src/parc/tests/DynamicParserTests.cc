@@ -3,6 +3,8 @@
 
 #include "..\DynamicParser.h"
 #include "..\Emit.h"
+#include "..\Program.h"
+#include "..\Utility.h"
 
 namespace {
 using namespace parc;
@@ -43,65 +45,48 @@ DynamicParserNode* GetParser() {
 
   return expr;
 }
-
-char GetNibble(unsigned char v) { return *("0123456789abcdef" + (v & 0xf)); }
-
-std::string GetHexDumpString(const std::string& buf) {
-  std::string hex;
-  std::string str;
-  size_t i = 0;
-  for (i = 0; i < buf.size(); i++) {
-    if ((i > 0) & ((i & 15) == 0)) {
-      hex.append(1, ' ');
-      hex.append(str);
-      str.clear();
-      hex.append(1, '\n');
-    }
-    if ((i & 15) == 0) {
-      hex.append(1, GetNibble(i >> 12));
-      hex.append(1, GetNibble(i >> 8));
-      hex.append(1, GetNibble(i >> 4));
-      hex.append(1, GetNibble(i));
-      hex.append(1, ' ');
-    }
-    if (((i & 15) != 0) & ((i & 7) == 0)) {
-      hex.append(1, ' ');
-    }
-    unsigned char v = (unsigned char)buf[i];
-    hex.append(1, GetNibble(v >> 4));
-    hex.append(1, GetNibble(v));
-    if ((0x20 <= v) & (v <= 0x7f)) {
-      str.append(1, buf[i]);
-    } else {
-      str.append(1, '.');
-    }
-  }
-  if ((i > 0) & ((i & 15) != 0)) {
-    hex.append(2 * (16 - (i & 15)) + (16 - (i & 15)) / 8, ' ');
-    hex.append(1, ' ');
-    hex.append(str);
-    str.clear();
-    hex.append(1, '\n');
-  }
-  return hex;
-}
 }
 
 BEGIN_TEST_CASE("DynamicParser_Test") {
   using namespace parc;
   auto parser = GetParser();
-  DynamicParserByteCodeGenerator byte_code_generator;
+  ByteCodeGenerator byte_code_generator;
+  byte_code_generator.EmitMetadataToken(kTokenNumber, "kTokenNumber");
+  byte_code_generator.EmitMetadataToken(kTokenOperator, "kTokenOperator");
+  byte_code_generator.EmitMetadataToken(kTokenLeftParenthesis,
+                                        "kTokenLeftParenthesis");
+  byte_code_generator.EmitMetadataToken(kTokenRightParenthesis,
+                                        "kTokenRightParenthesis");
   parser->Emit(&byte_code_generator);
-  // TEST_OUTPUT(GetHexDumpString(byte_code_generator.GetByteCodeStream()));
   std::string s;
-  DynamicParserByteCodeMetadata metadata;
-  metadata.tokens_.insert(std::make_pair(kTokenNumber, "kTokenNumber"));
-  metadata.tokens_.insert(std::make_pair(kTokenOperator, "kTokenOperator"));
-  metadata.tokens_.insert(
-      std::make_pair(kTokenLeftParenthesis, "kTokenLeftParenthesis"));
-  metadata.tokens_.insert(
-      std::make_pair(kTokenRightParenthesis, "kTokenRightParenthesis"));
-  byte_code_generator.DebugString(&s, &metadata);
+  byte_code_generator.DebugString(&s);
   TEST_OUTPUT(s);
+}
+END_TEST_CASE
+
+BEGIN_TEST_CASE("ProgramLoadFromTest") {
+  using namespace parc;
+  auto parser = GetParser();
+  ByteCodeGenerator byte_code_generator;
+  byte_code_generator.EmitMetadataToken(kTokenNumber, "kTokenNumber");
+  byte_code_generator.EmitMetadataToken(kTokenOperator, "kTokenOperator");
+  byte_code_generator.EmitMetadataToken(kTokenLeftParenthesis,
+                                        "kTokenLeftParenthesis");
+  byte_code_generator.EmitMetadataToken(kTokenRightParenthesis,
+                                        "kTokenRightParenthesis");
+  parser->Emit(&byte_code_generator);
+
+  Program p;
+  p.LoadFrom(byte_code_generator);
+
+  std::string s;
+  p.Decompile(&s);
+  TEST_OUTPUT(s);
+
+  std::string bin;
+  p.Save(&bin);
+  std::string hex;
+  GetHexDump(bin, &hex);
+  TEST_OUTPUT(hex);
 }
 END_TEST_CASE

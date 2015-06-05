@@ -4,7 +4,7 @@
 #include "Slice.h"
 
 namespace parc {
-class DynamicParserByteCodeGenerator;  // this does not belong here
+class ByteCodeGenerator;  // this does not belong here
 
 // represents a recursive decent parser control flow graph.
 class DynamicParserNode {
@@ -29,7 +29,7 @@ class DynamicParserNode {
   Slice GetLabel() const { return label_; }
   void SetLabel(const Slice& label) { label_ = label; };
 
-  virtual void Emit(DynamicParserByteCodeGenerator* byte_code_generator) = 0;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) = 0;
 
  private:
   int type_;
@@ -52,8 +52,7 @@ class DynamicParserAcceptNode
   DynamicParserNode* GetTarget() const { return target_; }
   void SetTarget(DynamicParserNode* target) { target_ = target; }
 
-  virtual void Emit(
-      DynamicParserByteCodeGenerator* byte_code_generator) override;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 
  private:
   int token_;
@@ -68,8 +67,7 @@ class DynamicParserApplyNode : public DynamicParserNode {
   DynamicParserNode* GetProduction() const { return prod_; }
   void SetProduction(DynamicParserNode* prod) { prod_ = prod; }
 
-  virtual void Emit(
-      DynamicParserByteCodeGenerator* byte_code_generator) override;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 
  private:
   DynamicParserNode* prod_;
@@ -91,8 +89,7 @@ class DynamicParserSelectNode : public DynamicParserNode {
   int GetPopCount() const { return pop_count_; }
   void SetPopCount(int pop_count) { pop_count_ = pop_count; }
 
-  virtual void Emit(
-      DynamicParserByteCodeGenerator* byte_code_generator) override;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 
  private:
   Slice type_name_;
@@ -103,8 +100,7 @@ class DynamicParserErrorNode : public DynamicParserNode {
  public:
   explicit DynamicParserErrorNode() : DynamicParserNode(kError) {}
 
-  virtual void Emit(
-      DynamicParserByteCodeGenerator* byte_code_generator) override;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 
  private:
 };
@@ -113,8 +109,7 @@ class DynamicParserReturnNode : public DynamicParserNode {
  public:
   explicit DynamicParserReturnNode() : DynamicParserNode(kReturn) {}
 
-  virtual void Emit(
-      DynamicParserByteCodeGenerator* byte_code_generator) override;
+  virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 
  private:
 };

@@ -6,199 +6,191 @@
 
 #include "Emit.h"
 #include "MsgPack.h"
+#include "DynamicParser.h"
 
 namespace parc {
-void DynamicParserByteCodeGenerator::EmitNone() {
-  msgpack::WriteInteger(kByteCodeNone, &byte_code_stream_);
+void ByteCodeGenerator::EmitAccept(int token) {
+  msgpack::WriteInteger(ByteCode::kAccept, &byte_code_);
+  msgpack::WriteInteger(token, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitAccept(int token) {
-  msgpack::WriteInteger(kByteCodeAccept, &byte_code_stream_);
-  msgpack::WriteInteger(token, &byte_code_stream_);
+void ByteCodeGenerator::EmitBranchOnEqual(int target) {
+  msgpack::WriteInteger(ByteCode::kBranchOnEqual, &byte_code_);
+  msgpack::WriteInteger(target, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitBranchOnEqual(int target) {
-  msgpack::WriteInteger(kByteCodeBranchOnEqual, &byte_code_stream_);
-  msgpack::WriteInteger(target, &byte_code_stream_);
+void ByteCodeGenerator::EmitBranch(int target) {
+  msgpack::WriteInteger(ByteCode::kBranch, &byte_code_);
+  msgpack::WriteInteger(target, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitBranch(int target) {
-  msgpack::WriteInteger(kByteCodeBranch, &byte_code_stream_);
-  msgpack::WriteInteger(target, &byte_code_stream_);
+void ByteCodeGenerator::EmitCall(int target) {
+  msgpack::WriteInteger(ByteCode::kCall, &byte_code_);
+  msgpack::WriteInteger(target, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitCall(int target) {
-  msgpack::WriteInteger(kByteCodeCall, &byte_code_stream_);
-  msgpack::WriteInteger(target, &byte_code_stream_);
+void ByteCodeGenerator::EmitReturn() {
+  msgpack::WriteInteger(ByteCode::kReturn, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitReturn() {
-  msgpack::WriteInteger(kByteCodeReturn, &byte_code_stream_);
+void ByteCodeGenerator::EmitError() {
+  msgpack::WriteInteger(ByteCode::kError, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitError() {
-  msgpack::WriteInteger(kByteCodeError, &byte_code_stream_);
+void ByteCodeGenerator::EmitLabel(int label) {
+  msgpack::WriteInteger(ByteCode::kLabel, &byte_code_);
+  msgpack::WriteInteger(label, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitLabel(int va) {
-  msgpack::WriteInteger(kByteCodeLabel, &byte_code_stream_);
-  msgpack::WriteInteger(va, &byte_code_stream_);
+void ByteCodeGenerator::EmitTrace(const Slice& msg) {
+  msgpack::WriteInteger(ByteCode::kTrace, &byte_code_);
+  msgpack::WriteString(msg, &byte_code_);
 }
 
-void DynamicParserByteCodeGenerator::EmitLabelMetadata(int va,
-                                                       const Slice& label) {
-  msgpack::WriteInteger(kByteCodeLabelMetadata, &byte_code_stream_);
-  msgpack::WriteInteger(va, &byte_code_stream_);
-  msgpack::WriteString(label, &byte_code_stream_);
+bool ByteCodeGenerator::Bind(DynamicParserNode* node, int* label) {
+  auto it = tlb_.find(node);
+  if (it == tlb_.end()) {
+    int next_label = (int)tlb_.size() + 1;
+    tlb_.insert(std::make_pair(node, next_label));
+    if (node->HasLabel()) {
+      EmitMetadataLabel(next_label, node->GetLabel());
+    }
+    *label = next_label;
+    return true;
+  }
+  *label = it->second;
+  return false;
 }
 
-void DynamicParserByteCodeGenerator::EmitNew(const Slice& type_name) {
-  msgpack::WriteInteger(kByteCodeLdstr, &byte_code_stream_);
-  msgpack::WriteString(type_name, &byte_code_stream_);
-  msgpack::WriteInteger(kByteCodeNewobj, &byte_code_stream_);
+////////////////////////////////
+
+void ByteCodeGenerator::EmitMetadataLabel(int label, const Slice& name) {
+  msgpack::WriteInteger(kMetadataLabel, &metadata_);
+  msgpack::WriteInteger(label, &metadata_);
+  msgpack::WriteString(name, &metadata_);
 }
 
-void DynamicParserByteCodeGenerator::EmitPop(int pop_count) {
-  msgpack::WriteInteger(kByteCodePop, &byte_code_stream_);
-  msgpack::WriteInteger(pop_count, &byte_code_stream_);
+void ByteCodeGenerator::EmitMetadataToken(int token, const Slice& name) {
+  msgpack::WriteInteger(kMetadataToken, &metadata_);
+  msgpack::WriteInteger(token, &metadata_);
+  msgpack::WriteString(name, &metadata_);
 }
 
-// void DynamicParserByteCodeGenerator::EmitVirtualAddress(int virtual_address)
-// {
-//   msgpack::WriteInteger(kByteCodeVirtualAddress, &byte_code_stream_);
-//   msgpack::WriteInteger(virtual_address, &byte_code_stream_);
-// }
+////////////////////////////////
 
-void DynamicParserByteCodeGenerator::EmitTrace(const Slice& msg) {
-  msgpack::WriteInteger(kByteCodeTrace, &byte_code_stream_);
-  msgpack::WriteString(msg, &byte_code_stream_);
-}
-
-void DynamicParserByteCodeGenerator::DebugString(
-    std::string* s, DynamicParserByteCodeMetadata* metadata) const {
+void ByteCodeGenerator::DebugString(std::string* s) const {
   assert(s);
   std::unordered_map<int, Slice> labels;
+  std::unordered_map<int, Slice> tokens;
+
+  {
+    msgpack::Reader reader(metadata_);
+    msgpack::Value v;
+    while (reader.Read(&v)) {
+      switch (v.int32_) {
+        case kMetadataLabel: {
+          msgpack::Value label;
+          reader.Read(&label);
+          msgpack::Value name;
+          reader.Read(&name);
+          labels.insert(std::make_pair(label.int32_, name.s_));
+          break;
+        }
+        case kMetadataToken: {
+          msgpack::Value label;
+          reader.Read(&label);
+          msgpack::Value name;
+          reader.Read(&name);
+          tokens.insert(std::make_pair(label.int32_, name.s_));
+          break;
+        }
+      }
+    }
+  }
+
   static const int kOpCodeMaxWidth = 8;
   std::stringstream ss;
   ss << std::left;  // left justify
-  msgpack::Reader reader(byte_code_stream_);
-  msgpack::Value v;
-  while (reader.Read(&v)) {
-    switch (v.int32_) {
-      case kByteCodeNone: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "nop" << std::endl;
-        break;
-      }
-      case kByteCodeAccept: {
-        msgpack::Value operand;
-        reader.Read(&operand);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "accept"
-           << " ";
-        if (metadata) {
-          auto it = metadata->tokens_.find(operand.int32_);
-          if (it != metadata->tokens_.end()) {
-            ss << it->second.ToString();
+  {
+    msgpack::Reader reader(byte_code_);
+    msgpack::Value v;
+    while (reader.Read(&v)) {
+      switch (v.int32_) {
+        case ByteCode::kAccept: {
+          msgpack::Value token;
+          reader.Read(&token);
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "accept"
+             << " ";
+          auto it = tokens.find(token.int32_);
+          if (it != tokens.end()) {
+            ss << it->second.ToString() << "(" << token.int32_ << ")";
           } else {
-            ss << operand.int32_;
+            ss << token.int32_;
           }
-        } else {
-          ss << operand.int32_;
+          ss << std::endl;
+          break;
         }
-        ss << std::endl;
-        break;
-      }
-      case kByteCodeBranchOnEqual: {
-        msgpack::Value operand;
-        reader.Read(&operand);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "beq"
-           << " " << operand.int32_ << std::endl;
-        break;
-      }
-      case kByteCodeBranch: {
-        msgpack::Value operand;
-        reader.Read(&operand);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "jmp"
-           << " " << operand.int32_ << std::endl;
-        break;
-      }
-      case kByteCodeCall: {
-        msgpack::Value operand;
-        reader.Read(&operand);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "call";
-        auto it = labels.find(operand.int32_);
-        if (it != labels.end()) {
-          ss << " " << it->second.ToString();
-        } else {
-          ss << " " << operand.int32_;
+        case ByteCode::kBranchOnEqual: {
+          msgpack::Value target;
+          reader.Read(&target);
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "beq"
+             << " " << target.int32_ << std::endl;
+          break;
         }
-        ss << std::endl;
-        break;
-      }
-      case kByteCodeReturn: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "return" << std::endl;
-        break;
-      }
-      case kByteCodeError: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "error" << std::endl;
-        break;
-      }
-      case kByteCodeLabelMetadata: {
-        msgpack::Value va;
-        reader.Read(&va);
-        msgpack::Value label;
-        reader.Read(&label);
-        labels.insert(std::make_pair(va.int32_, label.s_));  // remember this
-        break;
-      }
-      case kByteCodeLabel: {
-        msgpack::Value va;
-        reader.Read(&va);
-        auto it = labels.find(va.int32_);
-        if (it != labels.end()) {
-          ss << it->second.ToString();
-        } else {
-          ss << va.int32_;
+        case ByteCode::kBranch: {
+          msgpack::Value target;
+          reader.Read(&target);
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "jmp"
+             << " " << target.int32_ << std::endl;
+          break;
         }
-        ss << ":" << std::endl;
-        break;
-      }
-      case kByteCodeNewobj: {
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "newobj" << std::endl;
-        break;
-      }
-      case kByteCodeLdstr: {
-        msgpack::Value str;
-        reader.Read(&str);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "ldstr"
-           << " " << str.s_.ToString() << std::endl;
-        break;
-      }
-      case kByteCodePop: {
-        msgpack::Value pop_count;
-        reader.Read(&pop_count);
-        ss << "  " << std::setw(kOpCodeMaxWidth) << "pop"
-           << " " << pop_count.int32_ << std::endl;
-        break;
-      }
-      // case kByteCodeVirtualAddress: {
-      //   msgpack::Value va;
-      //   reader.Read(&va);
-      //   ss << va.int32_ << ":";
-      //   break;
-      // }
-      case kByteCodeTrace: {
-        msgpack::Value str;
-        reader.Read(&str);
-        ss << str.s_.ToString() << std::endl;
-        break;
-      }
-      default: {
-        ss << "!unk_byte_code" << std::endl;
-        break;
+        case ByteCode::kCall: {
+          msgpack::Value address;
+          reader.Read(&address);
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "call";
+          auto it = labels.find(address.int32_);
+          if (it != labels.end()) {
+            ss << " " << it->second.ToString() << "(" << address.int32_ << ")";
+          } else {
+            ss << " " << address.int32_;
+          }
+          ss << std::endl;
+          break;
+        }
+        case ByteCode::kReturn: {
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "return" << std::endl;
+          break;
+        }
+        case ByteCode::kError: {
+          ss << "  " << std::setw(kOpCodeMaxWidth) << "error" << std::endl;
+          break;
+        }
+        case ByteCode::kLabel: {
+          msgpack::Value va;
+          reader.Read(&va);
+          auto it = labels.find(va.int32_);
+          if (it != labels.end()) {
+            ss << it->second.ToString() << "(" << va.int32_ << ")";
+          } else {
+            ss << va.int32_;
+          }
+          ss << ":" << std::endl;
+          break;
+        }
+        case ByteCode::kTrace: {
+          msgpack::Value str;
+          reader.Read(&str);
+          ss << str.s_.ToString() << std::endl;
+          break;
+        }
+        default: {
+          ss << "!unk_byte_code" << std::endl;
+          break;
+        }
       }
     }
-    ss;
   }
-  s->append(ss.str());
+  s->swap(ss.str());
 }
+
 }

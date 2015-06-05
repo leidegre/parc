@@ -65,23 +65,23 @@ void WriteBoolean(bool value, std::string* buf) {
   buf->append(1, (char)(0xc2 + (value ? 1 : 0)));
 }
 
-void WriteInteger(const uint32_t value, std::string* buf) {
-  if (value <= 0x7f) {  // 1 byte (7-bit positive integer)
-    buf->append(1, (char)value);
-    return;
-  }
-  if (value <= UINT8_MAX) {  // 2 bytes (8-bit unsigned integer)
-    buf->append(1, (char)0xcc);
-    buf->append(1, (char)value);
-    return;
-  }
-  if (value <= UINT16_MAX) {  // 3 bytes (16-bit big-endian unsigned integer)
-    buf->append(1, (char)0xcd);
-    buf->append(1, (char)((value >> 8) & 0xff));
-    buf->append(1, (char)(value & 0xff));
-    return;
-  }
-  // 5 bytes (32-bit big-endian unsigned integer)
+void WriteFixInt(const int8_t value, std::string* buf) {
+  assert((-32 <= value) & (value <= 127));
+  buf->append(1, (char)value);
+}
+
+void WriteUInt8(const uint8_t value, std::string* buf) {
+  buf->append(1, (char)0xcc);
+  buf->append(1, (char)value);
+}
+
+void WriteUInt16(const uint16_t value, std::string* buf) {
+  buf->append(1, (char)0xcd);
+  buf->append(1, (char)((value >> 8) & 0xff));
+  buf->append(1, (char)(value & 0xff));
+}
+
+void WriteUInt32(const uint32_t value, std::string* buf) {
   buf->append(1, (char)0xce);
   buf->append(1, (char)((value >> 24) & 0xff));
   buf->append(1, (char)((value >> 16) & 0xff));
@@ -89,42 +89,15 @@ void WriteInteger(const uint32_t value, std::string* buf) {
   buf->append(1, (char)(value & 0xff));
 }
 
-void WriteInteger(const int32_t value, std::string* buf) {
-  if ((0 <= value) & (value <= 0x7f)) {  // 1 byte (7-bit positive integer)
-    buf->append(1, (char)value);
-    return;
-  }
-  if ((-32 <= value) & (value <= -1)) {  // 1 byte (5-bit negative integer)
-    buf->append(1, (char)value);
-    return;
-  }
-  // 2 bytes (8-bit signed integer)
-  if ((INT8_MIN <= value) & (value <= INT8_MAX)) {
-    buf->append(1, (char)0xd0);
-    buf->append(1, (char)value);
-    return;
-  }
-  // 3 bytes (16-bit big-endian signed integer)
-  if ((INT16_MIN <= value) & (value <= INT16_MAX)) {
-    buf->append(1, (char)0xd1);
-    buf->append(1, (char)((value >> 8) & 0xff));
-    buf->append(1, (char)(value & 0xff));
-    return;
-  }
-  // 5 bytes (32-bit big-endian signed integer)
-  buf->append(1, (char)0xd2);
-  buf->append(1, (char)((value >> 24) & 0xff));
-  buf->append(1, (char)((value >> 16) & 0xff));
-  buf->append(1, (char)((value >> 8) & 0xff));
-  buf->append(1, (char)(value & 0xff));
+void WriteUInt32(const uint32_t value, char* buf) {
+  buf[0] = (char)0xce;
+  buf[1] = (char)((value >> 24) & 0xff);
+  buf[2] = (char)((value >> 16) & 0xff);
+  buf[3] = (char)((value >> 8) & 0xff);
+  buf[4] = (char)(value & 0xff);
 }
 
-void WriteInteger(const uint64_t value, std::string* buf) {
-  if (value <= UINT32_MAX) {
-    WriteInteger((uint32_t)value, buf);
-    return;
-  }
-  // 9 bytes (64-bit big-endian unsigned integer)
+void WriteUInt64(const uint64_t value, std::string* buf) {
   buf->append(1, (char)0xcf);
   buf->append(1, (char)((value >> 56) & 0xff));
   buf->append(1, (char)((value >> 48) & 0xff));
@@ -136,12 +109,34 @@ void WriteInteger(const uint64_t value, std::string* buf) {
   buf->append(1, (char)(value & 0xff));
 }
 
-void WriteInteger(const int64_t value, std::string* buf) {
-  if ((INT32_MIN <= value) & (value <= INT32_MAX)) {  // 1 byte
-    WriteInteger((int32_t)value, buf);
-    return;
-  }
-  // 9 bytes (64-bit big-endian signed integer)
+void WriteInt8(const int8_t value, std::string* buf) {
+  buf->append(1, (char)0xd0);
+  buf->append(1, (char)value);
+}
+
+void WriteInt16(const int16_t value, std::string* buf) {
+  buf->append(1, (char)0xd1);
+  buf->append(1, (char)((value >> 8) & 0xff));
+  buf->append(1, (char)(value & 0xff));
+}
+
+void WriteInt32(const int32_t value, std::string* buf) {
+  buf->append(1, (char)0xd2);
+  buf->append(1, (char)((value >> 24) & 0xff));
+  buf->append(1, (char)((value >> 16) & 0xff));
+  buf->append(1, (char)((value >> 8) & 0xff));
+  buf->append(1, (char)(value & 0xff));
+}
+
+void WriteInt32(const int32_t value, char* buf) {
+  buf[0] = (char)0xd2;
+  buf[1] = (char)((value >> 24) & 0xff);
+  buf[2] = (char)((value >> 16) & 0xff);
+  buf[3] = (char)((value >> 8) & 0xff);
+  buf[4] = (char)(value & 0xff);
+}
+
+void WriteInt64(const int64_t value, std::string* buf) {
   buf->append(1, (char)0xd3);
   buf->append(1, (char)((value >> 56) & 0xff));
   buf->append(1, (char)((value >> 48) & 0xff));
@@ -151,6 +146,64 @@ void WriteInteger(const int64_t value, std::string* buf) {
   buf->append(1, (char)((value >> 16) & 0xff));
   buf->append(1, (char)((value >> 8) & 0xff));
   buf->append(1, (char)(value & 0xff));
+}
+
+void WriteInteger(const uint32_t value, std::string* buf) {
+  if (value <= 0x7f) {
+    // 1 byte (7-bit positive integer)
+    WriteFixInt((int8_t)value, buf);
+    return;
+  }
+  if (value <= UINT8_MAX) {
+    // 2 bytes (8-bit unsigned integer)
+    WriteUInt8((uint8_t)value, buf);
+    return;
+  }
+  if (value <= UINT16_MAX) {
+    // 3 bytes (16-bit big-endian unsigned integer)
+    WriteInt16((uint16_t)value, buf);
+    return;
+  }
+  // 5 bytes (32-bit big-endian unsigned integer)
+  WriteUInt32(value, buf);
+}
+
+void WriteInteger(const uint64_t value, std::string* buf) {
+  if (value <= UINT32_MAX) {
+    WriteInteger((uint32_t)value, buf);
+    return;
+  }
+  // 9 bytes (64-bit big-endian unsigned integer)
+  WriteUInt64(value, buf);
+}
+
+void WriteInteger(const int32_t value, std::string* buf) {
+  if ((-32 <= value) & (value <= 127)) {
+    // 1 byte (5-bit negative integer - 7-bit positive integer)
+    WriteFixInt((int8_t)value, buf);
+    return;
+  }
+  // 2 bytes (8-bit signed integer)
+  if ((INT8_MIN <= value) & (value <= INT8_MAX)) {
+    WriteInt8((int8_t)value, buf);
+    return;
+  }
+  // 3 bytes (16-bit big-endian signed integer)
+  if ((INT16_MIN <= value) & (value <= INT16_MAX)) {
+    WriteInt16((int16_t)value, buf);
+    return;
+  }
+  // 5 bytes (32-bit big-endian signed integer)
+  WriteInt32(value, buf);
+}
+
+void WriteInteger(const int64_t value, std::string* buf) {
+  if ((INT32_MIN <= value) & (value <= INT32_MAX)) {  // 1 byte
+    WriteInteger((int32_t)value, buf);
+    return;
+  }
+  // 9 bytes (64-bit big-endian signed integer)
+  WriteInt64(value, buf);
 }
 
 void WriteString(const Slice& value, std::string* buf) {
@@ -163,23 +216,79 @@ void WriteString(const Slice& value, std::string* buf) {
   buf->append(value.GetData(), value.GetSize());
 }
 
+void WriteByteArray(const Slice& value, std::string* buf) {
+  assert(value.GetSize() <= UINT32_MAX);
+  WriteLengthDelimited(0xc4, value.GetSize(), buf);
+  buf->append(value.GetData(), value.GetSize());
+}
+
+void WriteValue(const Value& value, std::string* buf) {
+  switch (value.type_) {
+    case Value::kFixInt: {
+      WriteFixInt((int8_t)value.int32_, buf);
+      break;
+    }
+    case Value::kUInt8: {
+      WriteUInt8((uint8_t)value.uint32_, buf);
+      break;
+    }
+    case Value::kInt8: {
+      WriteInt8((int8_t)value.int32_, buf);
+      break;
+    }
+    case Value::kUInt16: {
+      WriteUInt16((uint16_t)value.uint32_, buf);
+      break;
+    }
+    case Value::kInt16: {
+      WriteInt16((int16_t)value.int32_, buf);
+      break;
+    }
+    case Value::kUInt32: {
+      WriteUInt32(value.uint32_, buf);
+      break;
+    }
+    case Value::kInt32: {
+      WriteInt32(value.int32_, buf);
+      break;
+    }
+    case Value::kUInt64: {
+      WriteUInt64(value.uint64_, buf);
+      break;
+    }
+    case Value::kInt64: {
+      WriteInt64(value.int64_, buf);
+      break;
+    }
+    case Value::kStr: {
+      WriteString(value.s_, buf);
+      break;
+    }
+    default: {
+      assert(false && "not supported");
+      break;
+    }
+  }
+}
+
 bool Reader::Read(Value* value) {
   // see https://github.com/msgpack/msgpack/blob/master/spec.md#formats-overview
   if (pos_ < end_) {
-    uint8_t type_code = *pos_++;  // todo: don't move ptr if error in stream
-    if (type_code <= 0x7f) {      // 0x00 - 0x7f
-      value->type_ = Value::kInt8;
+    // todo: don't move ptr if error in stream
+    char type_code = *pos_++;
+    if ((-32 <= type_code) & (type_code <= 127)) {  // 0xe0 - 0xff, 0x00 - 0x7f
+      value->type_ = Value::kFixInt;
       value->int64_ = type_code;
-    } else if (type_code <= 0x8f) {  // 0x80 - 0x8f
+    } else if ((uint8_t)type_code <= 0x8f) {  // 0x80 - 0x8f
       assert(false);
-    } else if (type_code <= 0x9f) {  // 0x90 - 0x9f
+    } else if ((uint8_t)type_code <= 0x9f) {  // 0x90 - 0x9f
       assert(false);
-    } else if (type_code <= 0xbf) {  // 0xa0 - 0xbf
+    } else if ((uint8_t)type_code <= 0xbf) {  // 0xa0 - 0xbf
       value->type_ = Value::kStr;
       size_t size = type_code & 0x1f;
       value->s_ = ReadLengthDelimited(size);
-    } else if (type_code <= 0xdf) {  // 0xc0 - 0xdf
-      switch (type_code) {
+    } else {  // 0xc0 - 0xdf
+      switch ((uint8_t)type_code) {
         case 0xc0: {
           value->type_ = Value::kNull;
           value->uint64_ = 0;
@@ -193,6 +302,24 @@ bool Reader::Read(Value* value) {
         case 0xc3: {  // true
           value->type_ = Value::kBooleanTrue;
           value->uint64_ = 1;
+          break;
+        }
+        case 0xc4: {
+          value->type_ = Value::kBin;
+          size_t size = ReadUInt8();
+          value->s_ = ReadLengthDelimited(size);
+          break;
+        }
+        case 0xc5: {
+          value->type_ = Value::kBin;
+          size_t size = ReadUInt16();
+          value->s_ = ReadLengthDelimited(size);
+          break;
+        }
+        case 0xc6: {
+          value->type_ = Value::kBin;
+          size_t size = ReadUInt32();
+          value->s_ = ReadLengthDelimited(size);
           break;
         }
         case 0xcc: {
@@ -253,11 +380,12 @@ bool Reader::Read(Value* value) {
           value->s_ = ReadLengthDelimited(size);
           break;
         }
-        default: { assert(false); }
+        default: {
+          fprintf(stderr, "\nmsgpack format error: unrecognized type code '%x'",
+                  (uint8_t)type_code);
+          assert(false && "msgpack format error");
+        }
       }
-    } else {  // 0xe0 - 0xff
-      value->type_ = Value::kInt8;
-      value->int64_ = (int8_t)type_code;
     }
     return true;
   }

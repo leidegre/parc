@@ -8,14 +8,13 @@
 namespace parc {
 namespace msgpack {
 struct Value {
+  // this map represents an internal type system unrelated to msgpack
   enum {
-    // this map represents our internal type system (not the msgpack spec, see
-    // Reader::Read)
     kNull = 0,
-    kBooleanFamily = (1 << 3),
+    kBooleanFamily = 0x10,
     kBooleanFalse = kBooleanFamily | 0,
     kBooleanTrue = kBooleanFamily | 1,
-    kIntFamily = (2 << 3),
+    kIntFamily = 0x20,
     kUInt8 = kIntFamily | 0,
     kInt8 = kIntFamily | 1,
     kUInt16 = kIntFamily | 2,
@@ -24,10 +23,14 @@ struct Value {
     kInt32 = kIntFamily | 5,
     kUInt64 = kIntFamily | 6,
     kInt64 = kIntFamily | 7,
-    kStrFamily = (3 << 3),
+    kFixInt = kIntFamily | 9,  // fixint is signed
+    kStrFamily = 0x30,
     kStr = kStrFamily | 0,
+    kBinFamily = 0x40,
+    kBin = kStrFamily | 0,
+    kFamilyMask = 0x70,
   };
-  uint8_t type_;
+  char type_;
   union {
     bool bool_;
     int32_t int32_;
@@ -40,12 +43,34 @@ struct Value {
 };
 
 void WriteNull(std::string* buf);
+
 void WriteBoolean(const bool value, std::string* buf);
-void WriteInteger(const uint32_t value, std::string* buf);
+
+void WriteFixInt(const int8_t v, std::string* buf);
+
+void WriteUInt8(const uint8_t value, std::string* buf);
+void WriteUInt16(const uint16_t value, std::string* buf);
+void WriteUInt32(const uint32_t value, std::string* buf);
+// REQUIRES: sizeof(buf) >= 5
+void WriteUInt32(const uint32_t value, char* buf);
+void WriteUInt64(const uint64_t value, std::string* buf);
+
+void WriteInt8(const int8_t value, std::string* buf);
+void WriteInt16(const int16_t value, std::string* buf);
+void WriteInt32(const int32_t value, std::string* buf);
+// REQUIRES: sizeof(buf) >= 5
+void WriteInt32(const int32_t value, char* buf);
+void WriteInt64(const int64_t value, std::string* buf);
+
+// These use the least number of bytes required to store the integer.
 void WriteInteger(const int32_t value, std::string* buf);
-void WriteInteger(const uint64_t value, std::string* buf);
 void WriteInteger(const int64_t value, std::string* buf);
+void WriteInteger(const uint32_t value, std::string* buf);
+void WriteInteger(const uint64_t value, std::string* buf);
+
 void WriteString(const Slice& value, std::string* buf);
+void WriteByteArray(const Slice& value, std::string* buf);
+void WriteValue(const Value& value, std::string* buf);
 
 class Reader {
  public:
@@ -65,6 +90,7 @@ class Reader {
 
   Slice ReadLengthDelimited(size_t length);
 
+  void SetPosition(const char* pos) { pos_ = pos; }
   const char* GetPosition() const { return pos_; }
 
  private:

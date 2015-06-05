@@ -1,6 +1,7 @@
 param(
   [string]$Variant = 'debug',
-  [switch]$Verbose = $false
+  [switch]$Verbose = $false,
+  [string[]]$TestList = @()
 )
 
 & tundra2 "win64-msvc-$Variant-default" parc
@@ -14,7 +15,7 @@ if ($Verbose) {
   $parc_args += '-v'
 }
 
-& "t2-output\win64-msvc-$Variant-default\parc.exe" $parc_args
+& "t2-output\win64-msvc-$Variant-default\parc.exe" $parc_args $TestList
 if ($lastexitcode -ne 0) {
   write-host 'Tests failed.'
   exit 1

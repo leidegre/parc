@@ -11,7 +11,7 @@ class TestManager {
 
   void Register(TestCase* test_case);
 
-  bool Run(int flags = 0);
+  bool Run(const std::vector<const char*>& test_list, int flags = 0);
 
  private:
   TestCase* test_case_;
