@@ -9,6 +9,26 @@
 #include "DynamicParser.h"
 
 namespace parc {
+const char* ByteCode::GetMnemonic(uint32_t op_code) {
+  static const char* mnemonics[kMax];
+  static bool is_initialized;
+  if (!is_initialized) {
+    memset(mnemonics, 0, sizeof(mnemonics));
+    mnemonics[kAccept] = "accept";
+    mnemonics[kBranchOnEqual] = "beq";
+    mnemonics[kBranch] = "jmp";
+    mnemonics[kCall] = "call";
+    mnemonics[kReturn] = "ret";
+    mnemonics[kError] = "err";
+    mnemonics[kLabel] = "lbl";
+    is_initialized = true;
+  }
+  if (op_code < kMax) {
+    return mnemonics[op_code];
+  }
+  return nullptr;
+}
+
 void ByteCodeGenerator::EmitAccept(int token) {
   msgpack::WriteInteger(ByteCode::kAccept, &byte_code_);
   msgpack::WriteInteger(token, &byte_code_);
@@ -192,5 +212,4 @@ void ByteCodeGenerator::DebugString(std::string* s) const {
   }
   s->swap(ss.str());
 }
-
 }

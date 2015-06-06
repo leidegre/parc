@@ -8,7 +8,7 @@
 #endif
 
 namespace {
-void WriteLengthDelimited(uint8_t type_code, size_t size, std::string* buf) {
+void WriteLengthDelimited3(uint8_t type_code, size_t size, std::string* buf) {
   if (size <= UINT8_MAX) {
     buf->append(1, (char)type_code);
     buf->append(1, (char)(size & 0xff));
@@ -28,7 +28,7 @@ void WriteLengthDelimited(uint8_t type_code, size_t size, std::string* buf) {
     buf->append(1, (char)(size & 0xff));
     return;
   }
-  assert(false);
+  assert(false && "msgpack: argument our of range");
 }
 
 // if the host platform is big-endian replace these with an identity function
@@ -206,20 +206,98 @@ void WriteInteger(const int64_t value, std::string* buf) {
   WriteInt64(value, buf);
 }
 
-void WriteString(const Slice& value, std::string* buf) {
-  assert(value.GetSize() <= UINT32_MAX);
-  if (value.GetSize() <= 31) {
-    buf->append(1, (char)(0xa0 | value.GetSize()));
-  } else {
-    WriteLengthDelimited(0xd9, value.GetSize(), buf);
+void WriteFixString(const Slice& s, std::string* buf) {
+  assert(s.GetSize() <= 31);
+  buf->append(1, (char)(0xa0 | s.GetSize()));
+  buf->append(s.GetData(), s.GetSize());
+}
+
+void WriteString8(const Slice& s, std::string* buf) {
+  assert(s.GetSize() <= UINT8_MAX);
+  buf->append(1, (char)0xd9);
+  buf->append(1, (char)(s.GetSize() & 0xff));
+  buf->append(s.GetData(), s.GetSize());
+}
+
+void WriteString16(const Slice& s, std::string* buf) {
+  assert(s.GetSize() <= UINT16_MAX);
+  buf->append(1, (char)0xda);
+  buf->append(1, (char)((s.GetSize() >> 8) & 0xff));
+  buf->append(1, (char)(s.GetSize() & 0xff));
+  buf->append(s.GetData(), s.GetSize());
+}
+
+void WriteString32(const Slice& s, std::string* buf) {
+  assert(s.GetSize() <= UINT32_MAX);
+  buf->append(1, (char)0xdb);
+  buf->append(1, (char)((s.GetSize() >> 24) & 0xff));
+  buf->append(1, (char)((s.GetSize() >> 16) & 0xff));
+  buf->append(1, (char)((s.GetSize() >> 8) & 0xff));
+  buf->append(1, (char)(s.GetSize() & 0xff));
+  buf->append(s.GetData(), s.GetSize());
+}
+
+void WriteString(const Slice& s, std::string* buf) {
+  if (s.GetSize() <= 31) {
+    WriteFixString(s, buf);
+    return;
   }
-  buf->append(value.GetData(), value.GetSize());
+  if (s.GetSize() <= UINT8_MAX) {
+    WriteString8(s, buf);
+    return;
+  }
+  if (s.GetSize() <= UINT16_MAX) {
+    WriteString16(s, buf);
+    return;
+  }
+  if (s.GetSize() <= UINT32_MAX) {
+    WriteString32(s, buf);
+    return;
+  }
+  assert(false && "msgpack::WriteString argument 'GetSize' our of range");
 }
 
 void WriteByteArray(const Slice& value, std::string* buf) {
   assert(value.GetSize() <= UINT32_MAX);
-  WriteLengthDelimited(0xc4, value.GetSize(), buf);
+  WriteLengthDelimited3(0xc4, value.GetSize(), buf);
   buf->append(value.GetData(), value.GetSize());
+}
+
+void WriteFixMap(const size_t count, std::string* buf) {
+  assert(count <= 15);
+  buf->append(1, (char)(0x80 | count));
+}
+
+void WriteMap16(const size_t count, std::string* buf) {
+  assert(count <= UINT16_MAX);
+  buf->append(1, (char)0xde);
+  buf->append(1, (char)((count >> 8) & 0xff));
+  buf->append(1, (char)(count & 0xff));
+}
+
+void WriteMap32(const size_t count, std::string* buf) {
+  assert(count <= UINT32_MAX);
+  buf->append(1, (char)0xdf);
+  buf->append(1, (char)((count >> 24) & 0xff));
+  buf->append(1, (char)((count >> 16) & 0xff));
+  buf->append(1, (char)((count >> 8) & 0xff));
+  buf->append(1, (char)(count & 0xff));
+}
+
+void WriteMap(const size_t count, std::string* buf) {
+  if (count <= 15) {
+    WriteFixMap(count, buf);
+    return;
+  }
+  if (count <= UINT16_MAX) {
+    WriteMap16(count, buf);
+    return;
+  }
+  if (count <= UINT32_MAX) {
+    WriteMap32(count, buf);
+    return;
+  }
+  assert(false && "msgpack::WriteMap argument 'count' our of range");
 }
 
 void WriteValue(const Value& value, std::string* buf) {
@@ -260,8 +338,20 @@ void WriteValue(const Value& value, std::string* buf) {
       WriteInt64(value.int64_, buf);
       break;
     }
-    case Value::kStr: {
-      WriteString(value.s_, buf);
+    case Value::kFixStr: {
+      WriteFixString(value.s_, buf);
+      break;
+    }
+    case Value::kStr8: {
+      WriteString8(value.s_, buf);
+      break;
+    }
+    case Value::kStr16: {
+      WriteString16(value.s_, buf);
+      break;
+    }
+    case Value::kStr32: {
+      WriteString32(value.s_, buf);
       break;
     }
     default: {
@@ -280,11 +370,12 @@ bool Reader::Read(Value* value) {
       value->type_ = Value::kFixInt;
       value->int64_ = type_code;
     } else if ((uint8_t)type_code <= 0x8f) {  // 0x80 - 0x8f
-      assert(false);
+      value->type_ = Value::kFixMap;
+      value->uint64_ = (uint64_t)(type_code & 15);
     } else if ((uint8_t)type_code <= 0x9f) {  // 0x90 - 0x9f
       assert(false);
     } else if ((uint8_t)type_code <= 0xbf) {  // 0xa0 - 0xbf
-      value->type_ = Value::kStr;
+      value->type_ = Value::kFixStr;
       size_t size = type_code & 0x1f;
       value->s_ = ReadLengthDelimited(size);
     } else {  // 0xc0 - 0xdf
@@ -305,19 +396,19 @@ bool Reader::Read(Value* value) {
           break;
         }
         case 0xc4: {
-          value->type_ = Value::kBin;
+          value->type_ = Value::kBin8;
           size_t size = ReadUInt8();
           value->s_ = ReadLengthDelimited(size);
           break;
         }
         case 0xc5: {
-          value->type_ = Value::kBin;
+          value->type_ = Value::kBin16;
           size_t size = ReadUInt16();
           value->s_ = ReadLengthDelimited(size);
           break;
         }
         case 0xc6: {
-          value->type_ = Value::kBin;
+          value->type_ = Value::kBin32;
           size_t size = ReadUInt32();
           value->s_ = ReadLengthDelimited(size);
           break;
@@ -363,19 +454,19 @@ bool Reader::Read(Value* value) {
           break;
         }
         case 0xd9: {
-          value->type_ = Value::kStr;
+          value->type_ = Value::kStr8;
           size_t size = ReadUInt8();
           value->s_ = ReadLengthDelimited(size);
           break;
         }
         case 0xda: {
-          value->type_ = Value::kStr;
+          value->type_ = Value::kStr16;
           size_t size = ReadUInt16();
           value->s_ = ReadLengthDelimited(size);
           break;
         }
         case 0xdb: {
-          value->type_ = Value::kStr;
+          value->type_ = Value::kStr32;
           size_t size = ReadUInt32();
           value->s_ = ReadLengthDelimited(size);
           break;

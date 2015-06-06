@@ -4,6 +4,7 @@
 #include "..\DynamicParser.h"
 #include "..\Emit.h"
 #include "..\Program.h"
+#include "..\VES.h"
 #include "..\Utility.h"
 
 namespace {
@@ -88,5 +89,24 @@ BEGIN_TEST_CASE("ProgramLoadFromTest") {
   std::string hex;
   GetHexDump(bin, &hex);
   TEST_OUTPUT(hex);
+
+  Program p2;
+  p2.LoadFrom(bin);
+  p2.Initialize();
+
+  TokenList token_stream;
+  token_stream.Add(Token(kTokenNumber, "1"));
+  token_stream.Add(Token(kTokenOperator, "+"));
+  token_stream.Add(Token(kTokenNumber, "2"));
+
+  StackMachine sm;
+  sm.SetProgram(&p2);
+  sm.SetInput(&token_stream);
+
+  auto entry_point = p2.GetAddress("Expression");
+
+  sm.Exec(entry_point);
+
+  ASSERT_TRUE(token_stream.IsEndOfFile());
 }
 END_TEST_CASE

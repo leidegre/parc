@@ -25,12 +25,21 @@ struct Value {
     kInt64 = kIntFamily | 7,
     kFixInt = kIntFamily | 9,  // fixint is signed
     kStrFamily = 0x30,
-    kStr = kStrFamily | 0,
+    kFixStr = kStrFamily | 0,
+    kStr8 = kStrFamily | 1,
+    kStr16 = kStrFamily | 2,
+    kStr32 = kStrFamily | 4,
     kBinFamily = 0x40,
-    kBin = kStrFamily | 0,
-    kFamilyMask = 0x70,
+    kBin8 = kStrFamily | 1,
+    kBin16 = kStrFamily | 2,
+    kBin32 = kStrFamily | 4,
+    kMapFamily = 0x80,
+    kFixMap = kMapFamily | 0,
+    kMap16 = kMapFamily | 2,
+    kMap32 = kMapFamily | 4,
+    kFamilyMask = 0xf0,
   };
-  char type_;
+  uint8_t type_;
   union {
     bool bool_;
     int32_t int32_;
@@ -68,8 +77,19 @@ void WriteInteger(const int64_t value, std::string* buf);
 void WriteInteger(const uint32_t value, std::string* buf);
 void WriteInteger(const uint64_t value, std::string* buf);
 
-void WriteString(const Slice& value, std::string* buf);
+void WriteFixString(const Slice& s, std::string* buf);
+void WriteString8(const Slice& s, std::string* buf);
+void WriteString16(const Slice& s, std::string* buf);
+void WriteString32(const Slice& s, std::string* buf);
+void WriteString(const Slice& s, std::string* buf);
+
 void WriteByteArray(const Slice& value, std::string* buf);
+
+void WriteFixMap(const size_t count, std::string* buf);
+void WriteMap16(const size_t count, std::string* buf);
+void WriteMap32(const size_t count, std::string* buf);
+void WriteMap(const size_t count, std::string* buf);
+
 void WriteValue(const Value& value, std::string* buf);
 
 class Reader {
@@ -79,6 +99,7 @@ class Reader {
 
   bool Read(Value* value);
 
+  // todo: prefix with raw (raw implies no type code information)
   uint8_t ReadUInt8();
   int8_t ReadInt8();
   uint16_t ReadUInt16();

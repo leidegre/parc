@@ -2,6 +2,8 @@
 
 #include "Slice.h"
 
+#include <vector>
+
 namespace parc {
 class Token {
  public:
@@ -46,5 +48,29 @@ class TokenInputStream {
  public:
   virtual Token Next() = 0;
   virtual ~TokenInputStream() {}
+};
+
+class TokenList : public TokenInputStream {
+ public:
+  // non-copyable
+  TokenList(const TokenList&) = delete;
+  TokenList& operator=(const TokenList&) = delete;
+
+  TokenList() : position_(0), token_stream_() {}
+
+  virtual Token Next() override {
+    if (position_ < token_stream_.size()) {
+      return token_stream_[position_++];
+    }
+    return Token(Token::kEndOfFile);
+  }
+
+  void Add(const Token& token) { token_stream_.push_back(token); }
+
+  bool IsEndOfFile() { return !(position_ < token_stream_.size()); }
+
+ private:
+  size_t position_;
+  std::vector<Token> token_stream_;
 };
 }

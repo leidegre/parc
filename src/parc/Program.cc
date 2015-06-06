@@ -154,6 +154,69 @@ void Program::LoadFrom(const ByteCodeGenerator& byte_code_generator) {
   metadata_ = metadata;
 }
 
+void Program::LoadFrom(const Slice& data) {
+  msgpack::Reader reader(data);
+  msgpack::Value v;
+  if (!reader.Read(&v) ||
+      !((v.type_ & msgpack::Value::kMapFamily) == msgpack::Value::kMapFamily)) {
+    assert(false && "Cannot load program: bad header");
+    return;
+  }
+  std::string magic_number;
+  size_t count = v.uint32_;
+  for (size_t i = 0; i < count && reader.Read(&v); i++) {
+    switch (v.uint32_) {
+      case 0: {
+        reader.Read(&v);
+        magic_number = v.s_.ToString();
+        break;
+      }
+      case 1: {
+        reader.Read(&v);
+        metadata_ = v.s_.ToString();
+        break;
+      }
+      case 2: {
+        reader.Read(&v);
+        byte_code_ = v.s_.ToString();
+        break;
+      }
+      default: {
+        assert(false && "Cannot load program: bad data segment");
+        break;
+      }
+    }
+  }
+  if (magic_number != "PARCv1") {
+    assert(false && "Cannot load program: bad magic number");
+  }
+}
+
+void Program::Initialize() {
+  labels_.clear();
+  msgpack::Value v;
+  msgpack::Reader reader(metadata_);
+  while (reader.Read(&v)) {
+    switch (v.int32_) {
+      case ByteCodeGenerator::kMetadataLabel: {
+        msgpack::Value label;
+        reader.Read(&label);
+        msgpack::Value name;
+        reader.Read(&name);
+        labels_.insert(std::make_pair(name.s_.ToString(), label.size_));
+        break;
+      }
+      case ByteCodeGenerator::kMetadataToken: {
+        msgpack::Value token;
+        reader.Read(&token);
+        msgpack::Value name;
+        reader.Read(&name);
+        break;
+      }
+    }
+  }
+}
+
 void Program::Decompile(std::string* s) const {
   assert(s);
   std::stringstream ss;
@@ -260,11 +323,12 @@ void Program::Decompile(std::string* s) const {
 }
 
 void Program::Save(std::string* s) const {
-  // I did not expect PARC to turn out CRAP just becuase msgpack is using
-  // big-endian. lol.
-  s->append(5, '\0');
-  msgpack::WriteUInt32(*((const uint32_t*)"CRAP"), &s->operator[](0));
+  msgpack::WriteMap(3, s);
+  msgpack::WriteInteger(0, s);
+  msgpack::WriteString("PARCv1", s);
+  msgpack::WriteInteger(1, s);
   msgpack::WriteByteArray(metadata_, s);
+  msgpack::WriteInteger(2, s);
   msgpack::WriteByteArray(byte_code_, s);
 }
 }

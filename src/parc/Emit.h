@@ -2,13 +2,14 @@
 
 #include "Slice.h"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
 namespace parc {
 class DynamicParserNode;
 
-#define MAKE_BYTE_CODE(op_code, num_args) ((op_code << 2) | num_args)
+#define PARC_BYTE_CODE(op_code, num_args) ((op_code << 2) | num_args)
 
 struct ByteCode {
   // byte code 0 (reserved)
@@ -16,19 +17,22 @@ struct ByteCode {
   // byte code 32-256 (two byte instruction)
   // byte code >256 (three byte instruction)
   // (a byte code can have at most 3 operands)
+  // (a single instruction is at most 4 consecutive msgpack values)
   enum {
-    kAccept = MAKE_BYTE_CODE(1, 1),
-    kBranchOnEqual = MAKE_BYTE_CODE(2, 1),
-    kBranch = MAKE_BYTE_CODE(3, 1),
-    kCall = MAKE_BYTE_CODE(4, 1),
-    kReturn = MAKE_BYTE_CODE(5, 0),
-    kError = MAKE_BYTE_CODE(6, 0),
-    kLabel = MAKE_BYTE_CODE(7, 1),
+    kAccept = PARC_BYTE_CODE(1, 1),
+    kBranchOnEqual = PARC_BYTE_CODE(2, 1),
+    kBranch = PARC_BYTE_CODE(3, 1),
+    kCall = PARC_BYTE_CODE(4, 1),
+    kReturn = PARC_BYTE_CODE(5, 0),
+    kError = PARC_BYTE_CODE(6, 0),
+    kLabel = PARC_BYTE_CODE(7, 1),
 
-    kTrace = MAKE_BYTE_CODE(32, 1),
+    kTrace = PARC_BYTE_CODE(32, 1),
 
     kMax = kTrace + 1,  // not a byte code
   };
+
+  static const char* GetMnemonic(uint32_t op_code);
 };
 
 class ByteCodeGenerator {
@@ -55,6 +59,10 @@ class ByteCodeGenerator {
   // along the paths of the control flow graph we need an easy way to find
   // things later (regardless of when they happened).
   // todo: move DynamicParserNode away from this module
+  // (this function is not needed, if all control flow nodes have a label member
+  // variable [initially initialized to zero]. We could use that but it implies
+  // that the control flow graph is a mutable data structure [or at least the
+  // annotation is])
   bool Bind(DynamicParserNode* node, int* label);
 
   const std::string& GetByteCodeStream() const { return byte_code_; }
