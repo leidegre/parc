@@ -29,6 +29,15 @@ class Slice {
     return IsEmpty() ? std::string() : std::string(data_, size_);
   }
 
+  int CompareTo(const Slice& other) const {
+    if (this->GetSize() < other.GetSize()) {
+      return -1;
+    } else if (this->GetSize() > other.GetSize()) {
+      return 1;
+    }
+    return memcmp(this->GetData(), other.GetData(), this->GetSize());
+  }
+
  private:
   const char* data_;
   size_t size_;

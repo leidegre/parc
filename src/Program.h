@@ -2,6 +2,7 @@
 
 #include "Slice.h"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -15,21 +16,10 @@ class Program {
   void LoadFrom(const Slice& data);
 
   // REQUIRES: LoadFrom
-  void Initialize();
+  void Optimize();
 
-  // REQUIRES: Initialize
-  size_t GetAddress(const std::string& label) const {
-    auto it = labels_.find(label);
-    if (it != labels_.end()) {
-      return it->second;
-    }
-    return (size_t)-1;
-  }
-
-  // REQUIRES: Initialize
-  const std::unordered_map<std::string, size_t>& GetAddressMap() const {
-    return labels_;
-  }
+  // REQUIRES: LoadFrom, Optimize
+  int32_t GetAddress(const Slice& label);
 
   // REQUIRES: LoadFrom
   const std::string& GetByteCode() const { return byte_code_; }
@@ -38,7 +28,7 @@ class Program {
   const std::string& GetMetadata() const { return metadata_; }
 
   // REQUIRES: LoadFrom
-  void Decompile(std::string* s) const;
+  void Disassemble(std::string* s) const;
 
   // REQUIRES: LoadFrom
   void Save(std::string* s) const;
@@ -46,6 +36,7 @@ class Program {
  private:
   std::string byte_code_;
   std::string metadata_;
+  // todo: remove, replace with linear metadata stream search
   std::unordered_map<std::string, size_t> labels_;
 };
 }

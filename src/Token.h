@@ -44,10 +44,16 @@ class Token {
   Slice leading_trivia_;
 };
 
+// IEnumerable<T> where T : Token
 class TokenInputStream {
  public:
-  virtual Token Next() = 0;
+  // REQUIRES: MoveNext
+  const Token& GetCurrent() const { return token_; };
+  virtual bool MoveNext() = 0;
   virtual ~TokenInputStream() {}
+
+ protected:
+  Token token_;
 };
 
 class TokenList : public TokenInputStream {
@@ -58,11 +64,12 @@ class TokenList : public TokenInputStream {
 
   TokenList() : position_(0), token_stream_() {}
 
-  virtual Token Next() override {
+  virtual bool MoveNext() override {
     if (position_ < token_stream_.size()) {
-      return token_stream_[position_++];
+      token_ = token_stream_[position_++];
+      return true;
     }
-    return Token(Token::kEndOfFile);
+    return false;
   }
 
   void Add(const Token& token) { token_stream_.push_back(token); }

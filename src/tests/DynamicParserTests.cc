@@ -6,6 +6,7 @@
 #include "..\Program.h"
 #include "..\VES.h"
 #include "..\Utility.h"
+#include "..\SyntaxTree.h"
 
 namespace {
 using namespace parc;
@@ -15,6 +16,7 @@ enum {
   kTokenLeftParenthesis,
   kTokenRightParenthesis
 };
+// parser without tree construction
 DynamicParserNode* GetParser() {
   auto primary = new DynamicParserAcceptNode(kTokenNumber);
   auto expr = new DynamicParserApplyNode(primary);
@@ -46,28 +48,84 @@ DynamicParserNode* GetParser() {
 
   return expr;
 }
+
+// parser with tree construction
+DynamicParserNode* GetParser2() {
+  auto primary = new DynamicParserAcceptNode(kTokenNumber);
+  auto literal_number = new DynamicParserSelectNode(1, "NumberLiteral");
+  auto expr = new DynamicParserApplyNode(primary);
+  auto lparen = new DynamicParserAcceptNode(kTokenLeftParenthesis);
+  auto eval = new DynamicParserApplyNode(expr);
+  auto rparen = new DynamicParserAcceptNode(kTokenRightParenthesis);
+  auto eval_expression = new DynamicParserSelectNode(3, "EvalExpression");
+  auto binary = new DynamicParserAcceptNode(kTokenOperator);
+  auto expr2 = new DynamicParserApplyNode(expr);
+  auto binary_expression = new DynamicParserSelectNode(3, "BinaryExpression");
+
+  literal_number->SetNext(new DynamicParserReturnNode());
+
+  primary->SetLabel("PrimaryExpression");
+  primary->SetTarget(literal_number);
+  primary->SetNext(lparen);
+
+  eval_expression->SetNext(new DynamicParserReturnNode());
+
+  rparen->SetTarget(eval_expression);
+  rparen->SetNext(new DynamicParserErrorNode());
+
+  eval->SetNext(rparen);
+
+  lparen->SetTarget(eval);
+  lparen->SetNext(new DynamicParserReturnNode());
+
+  expr2->SetNext(new DynamicParserReturnNode());
+
+  binary_expression->SetNext(new DynamicParserReturnNode());
+
+  binary->SetTarget(expr2);
+  binary->SetNext(binary_expression);
+
+  expr->SetLabel("Expression");
+  expr->SetNext(binary);
+
+  return expr;
+}
 }
 
-BEGIN_TEST_CASE("DynamicParser_Test") {
+BEGIN_TEST_CASE("ParserCodeGenerationTest") {
   using namespace parc;
-  auto parser = GetParser();
+  auto parser = GetParser2();
   ByteCodeGenerator byte_code_generator;
-  byte_code_generator.EmitMetadataToken(kTokenNumber, "kTokenNumber");
-  byte_code_generator.EmitMetadataToken(kTokenOperator, "kTokenOperator");
-  byte_code_generator.EmitMetadataToken(kTokenLeftParenthesis,
-                                        "kTokenLeftParenthesis");
-  byte_code_generator.EmitMetadataToken(kTokenRightParenthesis,
-                                        "kTokenRightParenthesis");
   parser->Emit(&byte_code_generator);
+
+  Program p;
+  p.LoadFrom(byte_code_generator);
+
   std::string s;
-  byte_code_generator.DebugString(&s);
+  p.Disassemble(&s);
   TEST_OUTPUT(s);
 }
 END_TEST_CASE
 
-BEGIN_TEST_CASE("ProgramLoadFromTest") {
+BEGIN_TEST_CASE("ParserCodeGenerationWithOptimizationsTest") {
   using namespace parc;
-  auto parser = GetParser();
+  auto parser = GetParser2();
+  ByteCodeGenerator byte_code_generator;
+  parser->Emit(&byte_code_generator);
+
+  Program p;
+  p.LoadFrom(byte_code_generator);
+  p.Optimize();
+
+  std::string s;
+  p.Disassemble(&s);
+  TEST_OUTPUT(s);
+}
+END_TEST_CASE
+
+BEGIN_TEST_CASE("ProgramTest") {
+  using namespace parc;
+  auto parser = GetParser2();
   ByteCodeGenerator byte_code_generator;
   byte_code_generator.EmitMetadataToken(kTokenNumber, "kTokenNumber");
   byte_code_generator.EmitMetadataToken(kTokenOperator, "kTokenOperator");
@@ -79,20 +137,7 @@ BEGIN_TEST_CASE("ProgramLoadFromTest") {
 
   Program p;
   p.LoadFrom(byte_code_generator);
-
-  std::string s;
-  p.Decompile(&s);
-  TEST_OUTPUT(s);
-
-  std::string bin;
-  p.Save(&bin);
-  std::string hex;
-  GetHexDump(bin, &hex);
-  TEST_OUTPUT(hex);
-
-  Program p2;
-  p2.LoadFrom(bin);
-  p2.Initialize();
+  p.Optimize();
 
   TokenList token_stream;
   token_stream.Add(Token(kTokenNumber, "1"));
@@ -100,13 +145,19 @@ BEGIN_TEST_CASE("ProgramLoadFromTest") {
   token_stream.Add(Token(kTokenNumber, "2"));
 
   StackMachine sm;
-  sm.SetProgram(&p2);
+  sm.SetProgram(&p);
   sm.SetInput(&token_stream);
 
-  auto entry_point = p2.GetAddress("Expression");
+  auto entry_point = p.GetAddress("Expression");
 
-  sm.Exec(entry_point);
+  ASSERT_TRUE(entry_point != -1);
 
-  ASSERT_TRUE(token_stream.IsEndOfFile());
+  auto syntax_tree = sm.Exec(entry_point);
+
+  ASSERT_TRUE(syntax_tree != nullptr);
+
+  std::string s;
+  syntax_tree->DebugString(&s);
+  TEST_OUTPUT(s);
 }
 END_TEST_CASE

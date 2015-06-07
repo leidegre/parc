@@ -26,14 +26,14 @@ DynamicLexerNode* DynamicLexerNode::Define(int lower, int upper, int flags) {
   return lexer_node;
 }
 
-Token DynamicLexer::Next() {
+bool DynamicLexer::MoveNext() {
   assert(root_);
 
   if (!inp_.Load()) {
     if (inp_.IsEmpty()) {
-      return Token(0);  // end of file
+      return false;  // end of file
     } else {
-      return Token(-1);  // error: encoding
+      return false;  // todo: how to raise error?
     }
   }
   // skip whitespace
@@ -70,8 +70,9 @@ Token DynamicLexer::Next() {
     auto t = inp_.Accept();
     // std::string s(t.GetData(), t.GetSize());
     // printf("<< %i %s\n", current_state->GetToken(), s.c_str());
-    return Token(current_state->GetToken(), t);
+    token_ = Token(current_state->GetToken(), t);
+    return true;
   }
-  return Token(-2);  // error: token
+  return false;  // error: token
 }
 }

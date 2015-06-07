@@ -5,7 +5,7 @@ namespace parc {
 void SyntaxNode::DebugString(std::string* s, size_t indent) {
   assert(s);
   s->append(1, '(');
-  s->append(label_);
+  s->append(label_.GetData(), label_.GetSize());
   if ((tree_.size() > 1) & (indent != (size_t)-1)) {
     for (const auto& node : tree_) {
       s->append(1, '\n');

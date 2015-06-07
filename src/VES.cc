@@ -30,11 +30,12 @@ void Trace(size_t, const char*, const int32_t, const int32_t) {}
 namespace parc {
 // a program is metadata and byte code (the metadata contains the symbolic
 // names for tokens and production rules)
-bool StackMachine::Exec(const size_t entry_point) {
+SyntaxTree* StackMachine::Exec(const size_t entry_point) {
   assert(p_);
   assert(inp_);
-  token_ = inp_->Next();
-  ByteCodeInterpreter interp(p_->GetByteCode());
+  ParserByteCodeInterpreter interp(p_->GetByteCode());
+  inp_->MoveNext();
+  interp.SetInput(inp_);
   interp.SetAddress(p_->GetByteCode().size());
   interp.Call(entry_point);
   for (;;) {
@@ -49,8 +50,7 @@ bool StackMachine::Exec(const size_t entry_point) {
     switch (op_code) {
       case ByteCode::kAccept: {
         const auto& token = interp.GetOperand(0);
-        int32_t result = Accept(token.int32_) ? 1 : 0;
-        interp.Push(result);
+        interp.Accept(token.int32_);
         break;
       }
       case ByteCode::kBranchOnEqual: {
@@ -74,23 +74,21 @@ bool StackMachine::Exec(const size_t entry_point) {
       }
       case ByteCode::kError: {
         Trace("syntax error");
-        return false;
+        return nullptr;
+      }
+      case ByteCode::kReduce: {
+        const auto& count = interp.GetOperand(0);
+        const auto& name = interp.GetOperand(1);
+        interp.Reduce(count.int32_, name.s_);
+        break;
       }
       default: {
-        Trace("unrecognized op code", op_code);
-        return false;
+        Trace("unimplemented op code", op_code);
+        return nullptr;
       }
     }
   }
 
-  return true;
-}
-
-bool StackMachine::Accept(const int token) {
-  if (token == token_.GetType()) {
-    token_ = inp_->Next();
-    return true;
-  }
-  return false;
+  return interp.GetSyntaxTree();
 }
 }

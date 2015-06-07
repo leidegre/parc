@@ -30,21 +30,20 @@ BEGIN_TEST_CASE("DynamicLexer_TreeConstructionTest") {
 
   parc::DynamicLexer lex(&root);
   lex.SetInput(parc::Utf8Decoder("1-(2+345)"));
-  auto tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 1);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 5);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 2);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 1);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 4);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 1);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 3);
-  tok = lex.Next();
-  ASSERT_TRUE(tok.GetType() == 0);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 1);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 5);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 2);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 1);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 4);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 1);
+  lex.MoveNext();
+  ASSERT_TRUE(lex.GetCurrent().GetType() == 3);
+  ASSERT_TRUE(!lex.MoveNext());  // end of file
 }
 END_TEST_CASE

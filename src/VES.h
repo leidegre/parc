@@ -4,6 +4,7 @@
 
 namespace parc {
 class Program;
+class SyntaxTree;
 
 class StackMachine {
  public:
@@ -16,13 +17,10 @@ class StackMachine {
   void SetInput(TokenInputStream* inp) { inp_ = inp; }
 
   // REQUIRES: SetProgram, SetInput
-  bool Exec(const size_t entry_point);
+  SyntaxTree* Exec(const size_t entry_point);
 
  private:
-  bool Accept(const int token);
-
   Program* p_;
   TokenInputStream* inp_;
-  Token token_;
 };
 }

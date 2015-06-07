@@ -1,21 +1,26 @@
 #pragma once
 
 #include "Slice.h"
+#include "Token.h"
 #include "Emit.h"
 #include "MsgPack.h"
 
+#include <vector>
 #include <stack>
 
 namespace parc {
+class SyntaxTree;
+
 class ByteCodeInterpreter {
  public:
   ByteCodeInterpreter(const Slice& byte_code)
-      : byte_code_(byte_code), reader_(byte_code) {}
+      : byte_code_(byte_code), reader_(byte_code), stack_() {}
 
-  // gets/sets the current address of the instruction pointer
+  // gets/sets the current instruction pointer
   int32_t GetAddress() const {
     return (int32_t)(reader_.GetPosition() - byte_code_.GetData());
   }
+
   void SetAddress(const int32_t new_address) {
     assert(((size_t)new_address <= byte_code_.GetSize()));
     reader_.SetPosition(byte_code_.GetData() + new_address);
@@ -44,16 +49,16 @@ class ByteCodeInterpreter {
     return v;
   }
 
-  void BranchOnEqual(int32_t address) {
+  void BranchOnEqual(const int32_t address) {
     int32_t equal = Pop();
     if (equal != 0) {
       Branch(address);
     }
   }
 
-  void Branch(int32_t address) { SetAddress(address); }
+  void Branch(const int32_t address) { SetAddress(address); }
 
-  void Call(int32_t address) {
+  void Call(const int32_t address) {
     Push(GetAddress());
     Branch(address);
   }
@@ -68,5 +73,27 @@ class ByteCodeInterpreter {
   msgpack::Reader reader_;
   msgpack::Value op_code_[4];
   std::stack<int32_t> stack_;
+};
+
+class ParserByteCodeInterpreter : public ByteCodeInterpreter {
+ public:
+  ParserByteCodeInterpreter(const Slice& byte_code)
+      : ByteCodeInterpreter(byte_code), inp_(nullptr), syntax_stack_() {}
+
+  TokenInputStream* GetInput() const { return inp_; }
+  void SetInput(TokenInputStream* inp) { inp_ = inp; }
+
+  // REQUIRES: SetInput
+  void Accept(const int32_t token);
+
+  void Reduce(const int32_t node_count, const Slice& node_name);
+
+  SyntaxTree* GetSyntaxTree() const {
+    return syntax_stack_.empty() ? nullptr : syntax_stack_.back();
+  }
+
+ private:
+  TokenInputStream* inp_;
+  std::vector<SyntaxTree*> syntax_stack_;
 };
 }

@@ -77,17 +77,17 @@ class DynamicParserSelectNode : public DynamicParserNode {
  public:
   // NOTE: A projection where the label is null implies a pop count of 0.
   //       (It simply yields the syntax tree node at the top of the stack.)
-  explicit DynamicParserSelectNode(const char* type_name = nullptr,
-                                   int pop_count = 0)
+  explicit DynamicParserSelectNode(int pop_count = 0,
+                                   const Slice& type_name = nullptr)
       : DynamicParserNode(kSelect),
-        type_name_(type_name),
-        pop_count_(pop_count) {}
-
-  Slice GetTypeName() const { return type_name_; }
-  void SetTypeName(const Slice& type_name) { type_name_ = type_name; }
+        pop_count_(pop_count),
+        type_name_(type_name) {}
 
   int GetPopCount() const { return pop_count_; }
   void SetPopCount(int pop_count) { pop_count_ = pop_count; }
+
+  Slice GetTypeName() const { return type_name_; }
+  void SetTypeName(const Slice& type_name) { type_name_ = type_name; }
 
   virtual void Emit(ByteCodeGenerator* byte_code_generator) override;
 

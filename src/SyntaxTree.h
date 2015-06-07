@@ -1,10 +1,11 @@
 #pragma once
 
+#include "Slice.h"
+#include "Token.h"
+
 #include <cassert>
 #include <string>
 #include <vector>
-
-#include "Token.h"
 
 namespace parc {
 class SyntaxTree {
@@ -36,7 +37,7 @@ class TokenNode : public SyntaxTree {
 
 class SyntaxNode : public SyntaxTree {
  public:
-  SyntaxNode(const char* label) : SyntaxTree(kSyntax), label_(label) {}
+  SyntaxNode(const Slice& label) : SyntaxTree(kSyntax), label_(label) {}
   virtual void DebugString(std::string* s, size_t indent) override;
   void Add(SyntaxTree* syntax) {
     assert(syntax);
@@ -44,7 +45,7 @@ class SyntaxNode : public SyntaxTree {
   }
 
  private:
-  const char* label_;
+  Slice label_;
   std::vector<SyntaxTree*> tree_;
 };
 

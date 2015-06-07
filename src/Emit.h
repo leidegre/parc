@@ -26,6 +26,7 @@ struct ByteCode {
     kReturn = PARC_BYTE_CODE(5, 0),
     kError = PARC_BYTE_CODE(6, 0),
     kLabel = PARC_BYTE_CODE(7, 1),
+    kReduce = PARC_BYTE_CODE(8, 2),
 
     kTrace = PARC_BYTE_CODE(32, 1),
 
@@ -51,6 +52,7 @@ class ByteCodeGenerator {
   void EmitReturn();
   void EmitError();
   void EmitLabel(int label);
+  void EmitReduce(int node_count, const Slice& node_name);
   void EmitTrace(const Slice& msg);
 
   // Virtual labels:
@@ -69,17 +71,15 @@ class ByteCodeGenerator {
 
   // metadata
   enum {
-    kMetadataLabel = 0x01,
-    kMetadataToken = 0x02,
+    kMetadataLabel = PARC_BYTE_CODE(1, 2),
+    kMetadataToken = PARC_BYTE_CODE(2, 2),
+    kMetadataLabelOffset = PARC_BYTE_CODE(3, 2),
   };
 
   void EmitMetadataLabel(int label, const Slice& name);
   void EmitMetadataToken(int token, const Slice& name);
 
   const std::string& GetMetadataStream() const { return metadata_; }
-
-  // debug
-  void DebugString(std::string* s) const;
 
  private:
   std::string byte_code_;

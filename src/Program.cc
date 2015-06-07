@@ -10,27 +10,69 @@
 
 namespace {
 using namespace parc;
-void CopyByteCode(const int byte_code, msgpack::Reader* inp, std::string* buf) {
-  msgpack::WriteInteger(byte_code, buf);
-  for (int i = 0, arg_count = byte_code & 3; i < arg_count; i++) {
-    msgpack::Value arg;
-    inp->Read(&arg);
-    msgpack::WriteValue(arg, buf);
+// todo: move to Interpreter.h?
+bool ReadInstruction(msgpack::Reader* reader, msgpack::Value inst[4]) {
+  auto v = &inst[0];
+  if (!reader->Read(v++)) {
+    return false;
+  }
+  switch (inst[0].int32_ & 3) {
+    case 3: {
+      if (!reader->Read(v++)) {
+        return false;
+      }
+    }
+    // fall-through case label
+    case 2: {
+      if (!reader->Read(v++)) {
+        return false;
+      }
+    }
+    // fall-through case label
+    case 1: {
+      if (!reader->Read(v++)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void WriteInstruction(msgpack::Value inst[4], std::string* buf) {
+  auto v = &inst[0];
+  WriteValue(*v++, buf);
+  switch (inst[0].int32_ & 3) {
+    case 3: {
+      WriteValue(*v++, buf);
+    }
+    // fall-through case label
+    case 2: {
+      WriteValue(*v++, buf);
+    }
+    // fall-through case label
+    case 1: {
+      WriteValue(*v++, buf);
+    }
   }
 }
 
-void MemorizeTarget(msgpack::Reader* inp,
+void MemorizeTarget(msgpack::Value inst[4],
                     std::vector<std::pair<size_t, int>>* fixme,
                     std::string* byte_code) {
-  msgpack::Value target;
-  inp->Read(&target);
-  fixme->push_back(std::make_pair(byte_code->size(), target.int32_));
-  msgpack::WriteInt32(target.int32_, byte_code);
+  msgpack::WriteInteger(inst[0].int32_, byte_code);
+  int target = inst[1].int32_;
+  fixme->push_back(std::make_pair(byte_code->size(), target));
+  msgpack::WriteInt32(target, byte_code);
 }
 }
 
 namespace parc {
 void Program::LoadFrom(const ByteCodeGenerator& byte_code_generator) {
+  byte_code_ = byte_code_generator.GetByteCodeStream();
+  metadata_ = byte_code_generator.GetMetadataStream();
+}
+
+void Program::Optimize() {
   // OK, the format of the program in the byte code generator is using virtual
   // labels and a crazy amount of jump instructions. The primary purpose of this
   // function is to replace the virtual labels with byte offsets and minimize
@@ -88,26 +130,25 @@ void Program::LoadFrom(const ByteCodeGenerator& byte_code_generator) {
   // followed by the runnable byte code (but in a single stream)
   std::unordered_map<int, size_t> offsets;
   std::vector<std::pair<size_t, int>> fixme;
+
   std::string byte_code;
-  msgpack::Value v;
-  msgpack::Reader reader(byte_code_generator.GetByteCodeStream());
-  while (reader.Read(&v)) {
-    switch (v.int32_) {
+  msgpack::Value inst[4];
+  msgpack::Reader byte_code_reader(byte_code_);
+  while (ReadInstruction(&byte_code_reader, inst)) {
+    switch (inst[0].int32_) {
       case ByteCode::kBranchOnEqual:
       case ByteCode::kBranch:
       case ByteCode::kCall: {
-        msgpack::WriteInteger(v.int32_, &byte_code);
-        MemorizeTarget(&reader, &fixme, &byte_code);
+        MemorizeTarget(inst, &fixme, &byte_code);
         break;
       }
       case ByteCode::kLabel: {
-        msgpack::Value label;
-        reader.Read(&label);
-        offsets.insert(std::make_pair(label.int32_, byte_code.size()));
+        int label = inst[1].int32_;
+        offsets.insert(std::make_pair(label, byte_code.size()));
         break;
       }
       default: {
-        CopyByteCode(v.int32_, &reader, &byte_code);
+        WriteInstruction(inst, &byte_code);
         break;
       }
     }
@@ -121,37 +162,27 @@ void Program::LoadFrom(const ByteCodeGenerator& byte_code_generator) {
   }
 
   std::string metadata;
-  msgpack::Reader reader2(byte_code_generator.GetMetadataStream());
-  while (reader2.Read(&v)) {
-    switch (v.int32_) {
+  msgpack::Reader metadata_reader(metadata_);
+  while (ReadInstruction(&metadata_reader, inst)) {
+    switch (inst[0].int32_) {
       case ByteCodeGenerator::kMetadataLabel: {
-        msgpack::Value label;
-        reader2.Read(&label);
-        msgpack::Value name;
-        reader2.Read(&name);
-        auto it = offsets.find(label.int32_);
+        int label = inst[1].int32_;
+        Slice name = inst[2].s_;
+        auto it = offsets.find(label);
         assert(it != offsets.end() &&
                "cannot load program: cannot find label metadata");
-        msgpack::WriteInteger(ByteCodeGenerator::kMetadataLabel, &metadata);
+        msgpack::WriteInteger(ByteCodeGenerator::kMetadataLabelOffset,
+                              &metadata);
         msgpack::WriteInteger(it->second, &metadata);
-        msgpack::WriteValue(name, &metadata);
+        msgpack::WriteString(name, &metadata);
         break;
       }
-      case ByteCodeGenerator::kMetadataToken: {
-        msgpack::Value token;
-        reader2.Read(&token);
-        msgpack::Value name;
-        reader2.Read(&name);
-        // msgpack::WriteInteger(ByteCodeGenerator::kMetadataToken, &metadata);
-        // msgpack::WriteValue(token, &metadata);
-        // msgpack::WriteValue(name, &metadata);
-        break;
-      }
+      default: { WriteInstruction(inst, &metadata); }
     }
   }
 
-  byte_code_ = byte_code;
-  metadata_ = metadata;
+  byte_code_.swap(byte_code);
+  metadata_.swap(metadata);
 }
 
 void Program::LoadFrom(const Slice& data) {
@@ -192,131 +223,123 @@ void Program::LoadFrom(const Slice& data) {
   }
 }
 
-void Program::Initialize() {
-  labels_.clear();
-  msgpack::Value v;
+int32_t Program::GetAddress(const Slice& label) {
+  msgpack::Value metadata[4];
   msgpack::Reader reader(metadata_);
-  while (reader.Read(&v)) {
-    switch (v.int32_) {
-      case ByteCodeGenerator::kMetadataLabel: {
-        msgpack::Value label;
-        reader.Read(&label);
-        msgpack::Value name;
-        reader.Read(&name);
-        labels_.insert(std::make_pair(name.s_.ToString(), label.size_));
-        break;
-      }
-      case ByteCodeGenerator::kMetadataToken: {
-        msgpack::Value token;
-        reader.Read(&token);
-        msgpack::Value name;
-        reader.Read(&name);
+  while (reader.Read(&metadata[0])) {
+    int count = metadata[0].int32_ & 3;
+    for (int i = 0; i < count; i++) {
+      reader.Read(&metadata[1 + i]);
+    }
+    switch (metadata[0].int32_) {
+      case ByteCodeGenerator::kMetadataLabelOffset: {
+        if (label.CompareTo(metadata[2].s_) == 0) {
+          return metadata[1].int32_;
+        }
         break;
       }
     }
   }
+  return -1;
 }
 
-void Program::Decompile(std::string* s) const {
+void Program::Disassemble(std::string* s) const {
   assert(s);
   std::stringstream ss;
 
-  const char* mnemonic[ByteCode::kMax];
-  memset(mnemonic, 0, sizeof(mnemonic));
-  mnemonic[ByteCode::kAccept] = "accept";
-  mnemonic[ByteCode::kBranchOnEqual] = "beq";
-  mnemonic[ByteCode::kBranch] = "jmp";
-  mnemonic[ByteCode::kCall] = "call";
-  mnemonic[ByteCode::kReturn] = "ret";
-  mnemonic[ByteCode::kError] = "err";
-  mnemonic[ByteCode::kLabel] = "lbl";
-
   std::unordered_map<int, Slice> label_metadata;
+  std::unordered_map<int, Slice> offset_metadata;
 
-  msgpack::Value v2;
-  msgpack::Reader reader2(metadata_);
-  while (reader2.Read(&v2)) {
-    switch (v2.int32_) {
-      case ByteCodeGenerator::kMetadataLabel: {
-        msgpack::Value label;
-        reader2.Read(&label);
-        msgpack::Value name;
-        reader2.Read(&name);
-        label_metadata.insert(std::make_pair(label.int32_, name.s_));
-        break;
+  {
+    msgpack::Value metadata[4];
+    msgpack::Reader reader(metadata_);
+    while (reader.Read(&metadata[0])) {
+      int count = metadata[0].int32_ & 3;
+      for (int i = 0; i < count; i++) {
+        reader.Read(&metadata[1 + i]);
       }
-      case ByteCodeGenerator::kMetadataToken: {
-        msgpack::Value token;
-        reader2.Read(&token);
-        msgpack::Value name;
-        reader2.Read(&name);
-        break;
+      switch (metadata[0].int32_) {
+        case ByteCodeGenerator::kMetadataLabel: {
+          label_metadata.insert(
+              std::make_pair(metadata[1].int32_, metadata[2].s_));
+          break;
+        }
+        case ByteCodeGenerator::kMetadataLabelOffset: {
+          offset_metadata.insert(
+              std::make_pair(metadata[1].int32_, metadata[2].s_));
+          break;
+        }
       }
     }
   }
 
-  msgpack::Value v;
+  msgpack::Value inst[4];
   msgpack::Reader reader(byte_code_);
   for (const char* p0 = reader.GetPosition();;) {
-    size_t offset = reader.GetPosition() - p0;
-    if (!reader.Read(&v)) {
+    int offset = (int)(reader.GetPosition() - p0);
+    if (!reader.Read(&inst[0])) {
       break;
     }
-    switch (v.int32_) {
-      default: {
-        ss << std::setw(4) << offset << " ";
+    int op_code = inst[0].int32_;
+    ss << std::setw(4) << offset << " ";
 
-        ss << std::setw(8);
-        if (v.int32_ < ByteCode::kMax) {
-          const char* mn = mnemonic[v.int32_];
-          if (mn) {
-            ss << mn << " ";
+    ss << std::setw(8);
+    if (op_code < ByteCode::kMax) {
+      const char* mn = ByteCode::GetMnemonic(op_code);
+      if (mn) {
+        ss << mn << " ";
+      } else {
+        ss << op_code << " ";
+      }
+    } else {
+      ss << op_code << " ";
+    }
+
+    for (int i = 0, arg_count = op_code & 3; i < arg_count; i++) {
+      if (i > 0) {
+        ss << ", ";
+      }
+      if (!reader.Read(&inst[1 + i])) {
+        fprintf(stderr, "cannot decompile: \n%s", ss.str().c_str());
+        assert(false && "cannot decompile: unexpected end of stream");
+        break;
+      }
+      const auto& v = inst[1 + i];
+      switch (v.type_ & 0xf0) {
+        case msgpack::Value::kIntFamily: {
+          ss << std::setw(4);
+          if ((v.type_ & 1) == 1) {
+            ss << v.int64_;
           } else {
-            ss << v.int32_ << " ";
+            ss << v.uint64_;
           }
-        } else {
-          ss << v.int32_ << " ";
+          break;
         }
-
-        for (int i = 0, arg_count = v.int32_ & 3; i < arg_count; i++) {
-          if (i > 0) {
-            ss << ", ";
-          }
-          if (!reader.Read(&v)) {
-            fprintf(stderr, "cannot decompile: \n%s", ss.str().c_str());
-            assert(false && "cannot decompile: unexpected end of stream");
-            break;
-          }
-          switch (v.type_ & 0xf0) {
-            case msgpack::Value::kIntFamily: {
-              ss << std::setw(4);
-              if ((v.type_ & 1) == 1) {
-                ss << v.int64_;
-              } else {
-                ss << v.uint64_;
-              }
-              break;
-            }
-            case msgpack::Value::kStrFamily: {
-              ss << v.s_.ToString();
-              break;
-            }
-            default: {
-              fprintf(stderr, "cannot decompile: \n%s", ss.str().c_str());
-              assert(false && "cannot decompile: unrecognized type family");
-              break;
-            }
-          }
+        case msgpack::Value::kStrFamily: {
+          ss << v.s_.ToString();
+          break;
         }
-
-        auto it = label_metadata.find((int)offset);
-        if (it != label_metadata.end()) {
-          ss << "  ; " << it->second.ToString();
+        default: {
+          fprintf(stderr, "cannot decompile: \n%s", ss.str().c_str());
+          assert(false && "cannot decompile: unrecognized type family");
+          break;
         }
-
-        ss << std::endl;
       }
     }
+
+    if (op_code == ByteCode::kLabel) {
+      auto it = label_metadata.find(inst[1].int32_);
+      if (it != label_metadata.end()) {
+        ss << "  ; " << it->second.ToString();
+      }
+    }
+
+    auto it = offset_metadata.find((int)offset);
+    if (it != offset_metadata.end()) {
+      ss << "  ; " << it->second.ToString();
+    }
+
+    ss << std::endl;
   }
 
   s->swap(ss.str());

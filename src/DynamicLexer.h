@@ -85,7 +85,7 @@ class DynamicLexer : public TokenInputStream {
 
   void SetInput(Utf8Decoder inp) { inp_ = inp; }
 
-  virtual Token Next() override;
+  virtual bool MoveNext() override;
 
  private:
   const DynamicLexerNode* root_;

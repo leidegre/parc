@@ -21,6 +21,7 @@ const char* ByteCode::GetMnemonic(uint32_t op_code) {
     mnemonics[kReturn] = "ret";
     mnemonics[kError] = "err";
     mnemonics[kLabel] = "lbl";
+    mnemonics[kReduce] = "reduce";
     is_initialized = true;
   }
   if (op_code < kMax) {
@@ -62,6 +63,12 @@ void ByteCodeGenerator::EmitLabel(int label) {
   msgpack::WriteInteger(label, &byte_code_);
 }
 
+void ByteCodeGenerator::EmitReduce(int32_t node_count, const Slice& node_name) {
+  msgpack::WriteInteger(ByteCode::kReduce, &byte_code_);
+  msgpack::WriteInteger(node_count, &byte_code_);
+  msgpack::WriteString(node_name, &byte_code_);
+}
+
 void ByteCodeGenerator::EmitTrace(const Slice& msg) {
   msgpack::WriteInteger(ByteCode::kTrace, &byte_code_);
   msgpack::WriteString(msg, &byte_code_);
@@ -94,122 +101,5 @@ void ByteCodeGenerator::EmitMetadataToken(int token, const Slice& name) {
   msgpack::WriteInteger(kMetadataToken, &metadata_);
   msgpack::WriteInteger(token, &metadata_);
   msgpack::WriteString(name, &metadata_);
-}
-
-////////////////////////////////
-
-void ByteCodeGenerator::DebugString(std::string* s) const {
-  assert(s);
-  std::unordered_map<int, Slice> labels;
-  std::unordered_map<int, Slice> tokens;
-
-  {
-    msgpack::Reader reader(metadata_);
-    msgpack::Value v;
-    while (reader.Read(&v)) {
-      switch (v.int32_) {
-        case kMetadataLabel: {
-          msgpack::Value label;
-          reader.Read(&label);
-          msgpack::Value name;
-          reader.Read(&name);
-          labels.insert(std::make_pair(label.int32_, name.s_));
-          break;
-        }
-        case kMetadataToken: {
-          msgpack::Value label;
-          reader.Read(&label);
-          msgpack::Value name;
-          reader.Read(&name);
-          tokens.insert(std::make_pair(label.int32_, name.s_));
-          break;
-        }
-      }
-    }
-  }
-
-  static const int kOpCodeMaxWidth = 8;
-  std::stringstream ss;
-  ss << std::left;  // left justify
-  {
-    msgpack::Reader reader(byte_code_);
-    msgpack::Value v;
-    while (reader.Read(&v)) {
-      switch (v.int32_) {
-        case ByteCode::kAccept: {
-          msgpack::Value token;
-          reader.Read(&token);
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "accept"
-             << " ";
-          auto it = tokens.find(token.int32_);
-          if (it != tokens.end()) {
-            ss << it->second.ToString() << "(" << token.int32_ << ")";
-          } else {
-            ss << token.int32_;
-          }
-          ss << std::endl;
-          break;
-        }
-        case ByteCode::kBranchOnEqual: {
-          msgpack::Value target;
-          reader.Read(&target);
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "beq"
-             << " " << target.int32_ << std::endl;
-          break;
-        }
-        case ByteCode::kBranch: {
-          msgpack::Value target;
-          reader.Read(&target);
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "jmp"
-             << " " << target.int32_ << std::endl;
-          break;
-        }
-        case ByteCode::kCall: {
-          msgpack::Value address;
-          reader.Read(&address);
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "call";
-          auto it = labels.find(address.int32_);
-          if (it != labels.end()) {
-            ss << " " << it->second.ToString() << "(" << address.int32_ << ")";
-          } else {
-            ss << " " << address.int32_;
-          }
-          ss << std::endl;
-          break;
-        }
-        case ByteCode::kReturn: {
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "return" << std::endl;
-          break;
-        }
-        case ByteCode::kError: {
-          ss << "  " << std::setw(kOpCodeMaxWidth) << "error" << std::endl;
-          break;
-        }
-        case ByteCode::kLabel: {
-          msgpack::Value va;
-          reader.Read(&va);
-          auto it = labels.find(va.int32_);
-          if (it != labels.end()) {
-            ss << it->second.ToString() << "(" << va.int32_ << ")";
-          } else {
-            ss << va.int32_;
-          }
-          ss << ":" << std::endl;
-          break;
-        }
-        case ByteCode::kTrace: {
-          msgpack::Value str;
-          reader.Read(&str);
-          ss << str.s_.ToString() << std::endl;
-          break;
-        }
-        default: {
-          ss << "!unk_byte_code" << std::endl;
-          break;
-        }
-      }
-    }
-  }
-  s->swap(ss.str());
 }
 }

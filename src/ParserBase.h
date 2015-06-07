@@ -20,9 +20,12 @@ class ParserBase {
   // REQUIRES: SetInput
   bool Read() {
     assert(inp_);
-    auto tok = inp_->Next();
-    token_ = tok;
-    return tok.GetType() != Token::kEndOfFile;
+    if (inp_->MoveNext()) {
+      token_ = inp_->GetCurrent();
+      return true;
+    }
+    token_ = Token(Token::kEndOfFile);
+    return false;
   }
 
   // REQUIRES: Read

@@ -87,7 +87,7 @@ void DynamicParserSelectNode::Emit(ByteCodeGenerator* byte_code_generator) {
   EmitTrace(this, byte_code_generator, "emit");
 
   byte_code_generator->EmitLabel(label);
-  assert(false && "not implemented yet");
+  byte_code_generator->EmitReduce(GetPopCount(), GetTypeName());
 
   EmitNext(this, byte_code_generator);
 }
