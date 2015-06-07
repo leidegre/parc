@@ -36,7 +36,7 @@ Build {
 		Program {
 			Name = "parc",
 			Sources = {
-				Glob { Dir = "src/parc", Extensions = CCFiles }
+				Glob { Dir = "src", Extensions = CCFiles }
 			},
 		}
 
