@@ -1,0 +1,36 @@
+[
+  {
+    "test": "lexer_test_01",
+    "source": "[null, false, true, 0, 1, 1.0, 2]",
+    "token_stream": [
+      {
+        "type": "NULL",
+        "text": "null"
+      },
+      {
+        "type": "FALSE",
+        "text": "false"
+      },
+      {
+        "type": "TRUE",
+        "text": "true"
+      },
+      {
+        "type": "NUMBER",
+        "text": "0"
+      },
+      {
+        "type": "NUMBER",
+        "text": "1"
+      },
+      {
+        "type": "NUMBER",
+        "text": "1.0"
+      },
+      {
+        "type": "NUMBER",
+        "text": "2"
+      }
+    ]
+  }
+]

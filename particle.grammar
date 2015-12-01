@@ -1,0 +1,78 @@
+
+"parc" {
+
+  "white-space" "ignore" ;
+
+  token 
+    = "a" .. "z" ( "_" | "a" .. "z" | "0" .. "9" ) * 
+    ;
+
+  production 
+    = "A" .. "Z" ( "a" .. "z" | "A" .. "Z" | "0" .. "9" ) * 
+	;
+
+  literal 
+    = "\"" ( ^ "\"" ) * "\"" 
+	;
+
+  Grammar 
+    = Namespace*
+	;
+
+  Namespace
+    = literal "{" Rule* "}"
+	;
+
+  Rule
+    = Option
+	| Token
+	| Production
+	;
+
+  Option
+	 = literal literal ";"
+	 ;
+
+  Token
+    = token "=" TokenQuantifier+ ";"
+	;
+
+  --this production can be written in more than one way...
+  TokenQuantifier
+    = TokenExpr ( "*" | "+" | "?" ) => Quantifier
+	| TokenExpr
+	;
+
+  TokenExpr
+    = TokenPrimary
+	| TokenPrimary ( "|" TokenExpr )+ => Choice
+	| "(" TokenExpr ")" => Eval
+	;
+
+  TokenPrimary
+    = literal
+	| "^" TokenExpr => Negation
+	| literal ".." literal => Range
+	;
+
+  Production
+    = production "=" ProductionBody ( "|" ProductionBody ) * ";"
+	;
+
+  ProductionBody
+    = ProductionExpr+
+    | ProductionExpr+ "=>" production => Projection
+	;
+  
+  ProductionExpr
+    = ProductionPrimary
+	| ProductionPrimary ( "*" | "+" | "?" ) => Quantifier
+	| "(" ProductionExpr ")" => Eval
+	;
+
+  ProductionPrimary
+    = literal => ImplicitToken
+	| production => ProductionReference
+	| token => TokenReference
+	;
+}
