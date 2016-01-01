@@ -9,13 +9,13 @@
 
 static const uint32_t HASH_MAP_KEY_IDENTITY = 0x80000000;
 
-typedef struct hash_map_bucket {
+struct hash_map_bucket {
   const void* k_;
   void* v_;
   hash_map_bucket* next_;
   uint32_t hash_;
   uint16_t size_;
-} hash_map_bucket;
+};
 
 static int hash_map_is_equal_key(hash_map_bucket* a, hash_map_bucket* b) {
   if ((a->hash_ == b->hash_) & (a->size_ == b->size_)) {

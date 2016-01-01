@@ -73,9 +73,9 @@ static void parc_parser_reduce(parc_parser *parser, const char *label,
 
 void parc_parser_init(const char *source, parc_parser *parser) {
   memset(parser, 0, sizeof(*parser));
-  parc_lexer_initialize(source, &parser->lexer_);
+  parc_lexer_init(source, strlen(source), &parser->lexer_);
   parc_lexer_next(&parser->lexer_, &parser->token_);
-};
+}
 
 static int parc_parse_grammar_unit(parc_parser *parser);
 static int parc_parse_namespace(parc_parser *parser);

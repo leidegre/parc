@@ -60,7 +60,7 @@ static void parc_compiler_accept_between(int lower, int upper,
     next->node_id_ = compiler->nfa_->node_id_++;
 
     new_obj(parc_nfa_guard, guard);
-	guard->u_.lexer_.is_complement_ = 0;
+    guard->u_.lexer_.is_complement_ = 0;
     guard->u_.lexer_.lower_ = lower;
     guard->u_.lexer_.upper_ = upper;
 

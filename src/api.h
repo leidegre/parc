@@ -24,6 +24,7 @@ typedef unsigned char bool;
 typedef unsigned char byte;
 
 typedef struct parc_clob parc_clob;
+typedef struct parc_token parc_token;
 typedef struct parc_lexer parc_lexer;
 typedef struct parc_parser parc_parser;
 typedef struct parc_syntax_tree parc_syntax_tree;
@@ -46,7 +47,7 @@ typedef enum parc_error {
 
 #include "slice.h"
 
-typedef enum parc_token_type {
+typedef enum {
   PARC_TOKEN_END_OF_ARRAY = -2,
   PARC_TOKEN_END_OF_STREAM = -1,
   PARC_TOKEN_NONE = 0,
@@ -68,41 +69,33 @@ typedef enum parc_token_type {
   PARC_TOKEN_GLOBAL,
 } parc_token_type;
 
-typedef struct parc_token {
+struct parc_token {
   parc_slice leading_trivia_;
   parc_token_type type_;
   parc_slice s_;
   int line_num_;
   int char_pos_;
-} parc_token;
-
-// parc_clob API
-
-parc_clob *parc_clob_create_from_string(const char *s);
-
-parc_slice parc_clob_get(parc_clob *clob);
-
-void parc_clob_destroy(parc_clob *clob);
+};
 
 // parc_lexer API
 
-typedef struct parc_lexer {
-  const char *front_;
-  const char *back_;
+struct parc_lexer {
+  const char *head_;
+  const char *tail_;
   const char *end_;
   int ch_;
   int ch_byte_count_;
   parc_token leading_trivia_;
   parc_error error_;
-} parc_lexer;
+};
 
-void parc_lexer_initialize(const char *source, parc_lexer *lexer);
+void parc_lexer_init(const char *data, const size_t size, parc_lexer *lexer);
 
 int parc_lexer_next(parc_lexer *lexer, parc_token *token);
 
 // syntax tree API
 
-typedef enum parc_syntax_tree_type {
+typedef enum {
   PARC_SYNTAX_TREE_TYPE_NONE,
   PARC_SYNTAX_TREE_TYPE_NODE,
   PARC_SYNTAX_TREE_TYPE_TOKEN,
@@ -113,34 +106,33 @@ typedef enum parc_syntax_tree_type {
 // for that syntax node. A syntax token is a leaf node and does not have
 // additional depth information.
 
-typedef struct parc_syntax_tree parc_syntax_tree;
-typedef struct parc_syntax_tree {
+struct parc_syntax_tree {
   parc_syntax_tree_type type_;
   parc_syntax_tree *sibling_;
-} parc_syntax_tree;
+};
 
-typedef struct parc_syntax_node {
+struct parc_syntax_node {
   parc_syntax_tree base_;
   const char *label_;
   parc_syntax_tree *first_child_;
-} parc_syntax_node;
+};
 
-typedef struct parc_syntax_token {
+struct parc_syntax_token {
   parc_syntax_tree base_;
   parc_token token_;
-} parc_syntax_token;
+};
 
 int parc_syntax_tree_debug(parc_syntax_tree *tree, char *buffer,
                            size_t buffer_size);
 
 // parser API
 
-typedef struct parc_parser {
+struct parc_parser {
   parc_lexer lexer_;
   parc_token token_;
   parc_syntax_tree *stack_;
   parc_error error_;
-} parc_parser;
+};
 
 void parc_parser_init(const char *source, parc_parser *parser);
 
@@ -162,7 +154,7 @@ typedef struct parc_nfa_edge parc_nfa_edge;
 typedef struct parc_nfa_guard parc_nfa_guard;
 
 // the guard set is the only thing that is different between lexer and parser.
-typedef struct parc_nfa_guard {
+struct parc_nfa_guard {
   union {
     struct {
       int is_complement_;
@@ -171,31 +163,31 @@ typedef struct parc_nfa_guard {
     } lexer_;
   } u_;
   parc_nfa_guard *next_;
-} parc_nfa_guard;
+};
 
-typedef struct parc_nfa_edge {
+struct parc_nfa_edge {
   parc_nfa_node *u_;
   parc_nfa_node *v_;
   parc_nfa_guard *guard_set_;
   parc_nfa_flags flags_;
-} parc_nfa_edge;
+};
 
-typedef struct parc_nfa_node {
+struct parc_nfa_node {
   int node_id_;
   parc_nfa_node *next_;
-} parc_nfa_node;
+};
 
-typedef struct parc_nfa_graph {
+struct parc_nfa_graph {
   int node_id_;
   parc_nfa_node root_;
   hash_map adjacency_list_;
-} parc_nfa_graph;
+};
 
-typedef struct parc_compiler {
+typedef struct {
   parc_syntax_tree *syntax_;
   parc_nfa_graph *nfa_;
   parc_nfa_node *nfa_stack_;
-  // the a running count of negations we've passed through, 
+  // the a running count of negations we've passed through,
   // think of it as a flip/flop
   // when this number is odd we emit the complement of range operations
   int neg_;

@@ -318,7 +318,7 @@ int json_string_builder_append(const char ch, json_string_builder *sb) {
     return 1;
   }
   return 0;
-};
+}
 
 int json_unescape_string_literal(const char *s, uint32_t s_size,
                                  char *unescaped, uint32_t unescaped_size) {

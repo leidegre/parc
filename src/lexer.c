@@ -31,17 +31,25 @@ static int utf8_get_mb_count(unsigned int v) {
   return -1;
 }
 
+static bool is_white_space(const int ch) {
+  return (ch == '\t') | (ch == '\n') | (ch == '\r') | (ch == ' ');
+}
+
+static bool is_between(const int ch, const int lower, const int upper) {
+  return (lower <= ch) & (ch <= upper);
+}
+
 static int parc_lexer_load(parc_lexer *lexer) {
   // Decode a single Unicode code point from an UTF-8 byte sequence.
-  if (!(lexer->front_ < lexer->end_)) {
+  if (!(lexer->head_ < lexer->end_)) {
     lexer->ch_ = 0;
     lexer->ch_byte_count_ = 0;
     lexer->error_ = PARC_ERROR_END_OF_FILE;
     return 0;
   }
-  byte *b = (byte *)lexer->front_;
+  byte *b = (byte *)lexer->head_;
   int n = utf8_get_mb_count(b[0]);
-  if (!(lexer->front_ + n <= lexer->end_)) {
+  if (!(lexer->head_ + n <= lexer->end_)) {
     lexer->ch_ = 0;
     lexer->ch_byte_count_ = 0;
     lexer->error_ = PARC_ERROR_INVALID_UTF8_BYTE_SEQUENCE;
@@ -84,16 +92,8 @@ static int parc_lexer_load(parc_lexer *lexer) {
 // REQUIRES: parc_lexer_load()
 static void parc_lexer_read(parc_lexer *lexer) {
   assert(lexer->ch_byte_count_ > 0);
-  lexer->front_ += lexer->ch_byte_count_;
+  lexer->head_ += lexer->ch_byte_count_;
   lexer->ch_byte_count_ = 0;
-}
-
-static bool is_white_space(const int ch) {
-  return (ch == '\t') | (ch == '\n') | (ch == '\r') | (ch == ' ');
-}
-
-static bool is_between(const int ch, const int lower, const int upper) {
-  return (lower <= ch) & (ch <= upper);
 }
 
 // Accept any character except the null character, '\0'
@@ -138,18 +138,18 @@ static void parc_lexer_yield(parc_lexer *lexer, parc_token_type token_type,
                              parc_token *token) {
   token->leading_trivia_ = lexer->leading_trivia_.s_;
   token->type_ = token_type;
-  token->s_ = parc_slice_create(lexer->back_, lexer->front_ - lexer->back_);
+  token->s_ = parc_slice_create(lexer->tail_, lexer->head_ - lexer->tail_);
   token->line_num_ = 1;
   token->char_pos_ = 1;
 
-  lexer->back_ = lexer->front_;
+  lexer->tail_ = lexer->head_;
 }
 
-void parc_lexer_initialize(const char *source, parc_lexer *lexer) {
+void parc_lexer_init(const char *data, const size_t size, parc_lexer *lexer) {
   memset(lexer, 0, sizeof(*lexer));
-  lexer->front_ = source;
-  lexer->back_ = source;
-  lexer->end_ = source + strlen(source);
+  lexer->head_ = data;
+  lexer->tail_ = data;
+  lexer->end_ = data + size;
   parc_lexer_load(lexer);
 }
 

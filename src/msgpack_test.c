@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     ASSERT_EQUAL_UINT8(4, temp[4]);
     ASSERT_TRUE(msgpack_writer_ensure(&writer, 4));
   }
-  
+
   TEST_NEW("msgpack_write_uint64_test") {
     char temp[9];
     msgpack_writer writer;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     ASSERT_EQUAL_UINT8(8, temp[8]);
     ASSERT_TRUE(msgpack_writer_ensure(&writer, 0));
   }
-    
+
   TEST_NEW("msgpack_read_uint8_test") {
     char temp[9] = {MSGPACK_TYPE_UINT8, 1, 0, 0, 0, 0, 0, 0, 0};
     msgpack_reader reader;
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     ASSERT_EQUAL_UINT8(1, v.num_.uint8_);
     ASSERT_TRUE(msgpack_reader_ensure(&reader, 7));
   }
-  
+
   TEST_NEW("msgpack_read_uint16_test") {
     char temp[9] = {MSGPACK_TYPE_UINT16, 1, 2, 0, 0, 0, 0, 0, 0};
     msgpack_reader reader;
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
     ASSERT_EQUAL_UINT16(258, v.num_.uint16_);
     ASSERT_TRUE(msgpack_reader_ensure(&reader, 6));
   }
-  
+
   TEST_NEW("msgpack_read_uint32_test") {
     char temp[9] = {MSGPACK_TYPE_UINT32, 1, 2, 3, 4, 0, 0, 0, 0};
     msgpack_reader reader;
@@ -113,13 +113,12 @@ int main(int argc, char* argv[]) {
     for (int i = msgpack_fixint_min; i <= msgpack_fixint_max; i++) {
       msgpack_value v;
       msgpack_read_value(&reader, &v);
-	  if (i < 0) {
-		  ASSERT_EQUAL_UINT8(MSGPACK_TYPE_FIXINT_NEG, v.type_);
-	  }
-	  else {
-		  ASSERT_EQUAL_UINT8(MSGPACK_TYPE_FIXINT_POS, v.type_);
-	  }
-	  ASSERT_EQUAL_INT(i, v.num_.int8_);
+      if (i < 0) {
+        ASSERT_EQUAL_UINT8(MSGPACK_TYPE_FIXINT_NEG, v.type_);
+      } else {
+        ASSERT_EQUAL_UINT8(MSGPACK_TYPE_FIXINT_POS, v.type_);
+      }
+      ASSERT_EQUAL_INT(i, v.num_.int8_);
     }
   }
 

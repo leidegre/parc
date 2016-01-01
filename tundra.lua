@@ -8,17 +8,29 @@ local win32_env = {
     GENERATE_PDB = "1",
     CCOPTS = {
       "/Za", -- Disable all Microsoft Visual C language extensions
-	  "/W3",
-	  "/we4002", --too many actual parameters for macro
-	  "/we4013", --undefined; assuming extern returning int
-	  "/we4047", --differs in levels of indirection
-	  "/we4129", --unrecognized character escape sequence
-	  "/we4133", --incompatible types
-	  "/we4287",
-	  "/we4716", --must return a value (missing return statement?)
+      "/W3",
+      "/we4002", --too many actual parameters for macro
+      "/we4013", --undefined; assuming extern returning int
+      "/we4047", --differs in levels of indirection
+      "/we4129", --unrecognized character escape sequence
+      "/we4133", --incompatible types
+      "/we4287",
+      "/we4716", --must return a value (missing return statement?)
     },
     PROGOPTS = {
       "/MACHINE:X64"
+    },
+  },
+}
+
+local macosx_env = {
+  Env = {
+    CCOPTS = {
+      "-fcolor-diagnostics", -- Enable color output
+      "-Werror=return-type", -- control reaches end of non-void function
+      -- C99
+      "-std=c99",
+      "-pedantic-errors",
     },
   },
 }
@@ -80,6 +92,13 @@ Build {
       SupportedHosts = { "windows" },
       DefaultOnHost = "windows",
       Inherit = win32_env,
+    },
+    Config {
+      Name = "macosx-clang",
+      Tools = { { "clang-osx" } },
+      SupportedHosts = { "macosx" },
+      DefaultOnHost = "macosx",
+      Inherit = macosx_env,
     },
   },
 

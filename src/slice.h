@@ -12,9 +12,8 @@ typedef struct parc_slice {
 
 // API
 
-parc_slice parc_slice_create(const char *data, size_t size);
+parc_slice parc_slice_create(const char *data, const size_t size);
 
 parc_slice parc_slice_create_from_string(const char *s);
 
-int parc_slice_compare(parc_slice a, parc_slice b);
-
+int parc_slice_compare(const parc_slice a, const parc_slice b);

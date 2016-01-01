@@ -2,12 +2,17 @@
 #include "api.h"
 #include "test.h"
 
+static void parc_lexer_init2(const char* str, parc_lexer* lexer) {
+  parc_lexer_init(str, strlen(str), lexer);
+}
+
 int main(int argc, char* argv[]) {
   test_initialize(argc, argv);
 
   TEST_NEW("parc_lexer_test") {
     parc_lexer lexer;
-    parc_lexer_initialize("\"parc\" { \"white-space\" \"ignore\" ; }", &lexer);
+    parc_lexer_init2("\"parc\" { \"white-space\" \"ignore\" ; }", &lexer);
+
     parc_token token;
 
     ASSERT_TRUE(parc_lexer_next(&lexer, &token));

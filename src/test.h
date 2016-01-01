@@ -33,21 +33,20 @@
 
 #define ASSERT_EQUAL_INT(expected, actual) _ASSERT_EQUAL(int, expected, actual)
 
-#define ASSERT_EQUAL_STRLEN(expected, actual, actual_length)               \
-  do {                                                                     \
-    if (!(strlen(expected) == actual_length &&                             \
-          strncmp(expected, actual, actual_length) == 0)) {                \
-      test_report_failure();                                               \
-      char temp[256];                                                      \
-      temp[0] = '\0';                                                      \
-      strncat(temp, actual, actual_length < sizeof(temp) - 1               \
-                                ? actual_length                            \
-                                : sizeof(temp) - 1);                       \
-      const char* s = "%s(%i): %s == %s; %s != %s\n";                      \
-      fprintf(stderr, s, __FILE__, __LINE__, #expected, #actual, expected, \
-              temp);                                                       \
-      return 1;                                                            \
-    }                                                                      \
+#define ASSERT_EQUAL_STRLEN(expected, actual, length)                        \
+  do {                                                                       \
+    if (!(strlen(expected) == length &&                                      \
+          strncmp(expected, actual, length) == 0)) {                         \
+      test_report_failure();                                                 \
+      char temp[64];                                                         \
+      const char* fmt;                                                       \
+      fmt = length < 50 ? "%.*s" : "%.*s...";                                \
+      sprintf(temp, fmt, length < 50 ? length : 50, actual);                 \
+      fmt = "%s(%i): %s == %s; <%s> != <%s>\n";                              \
+      fprintf(stderr, fmt, __FILE__, __LINE__, #expected, #actual, expected, \
+              temp);                                                         \
+      return 1;                                                              \
+    }                                                                        \
   } while (0)
 
 #define TEST_NEW(test_name)                                           \
@@ -58,11 +57,11 @@
 typedef enum test_status { TEST_STATUS_OK, TEST_STATUS_FAIL } test_status;
 
 typedef struct test_case test_case;
-typedef struct test_case {
+struct test_case {
   const char* name_;
   test_case* next_;
   test_status status_;
-} test_case;
+};
 
 void test_initialize(int argc, char* argv[]);
 

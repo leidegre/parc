@@ -8,10 +8,10 @@
 
 typedef struct hash_map_bucket hash_map_bucket;
 
-typedef struct hash_map {
-	hash_map_bucket** bucket_list_;
-	uint32_t capacity_;
-	uint32_t count_;
+typedef struct {
+  hash_map_bucket** bucket_list_;
+  uint32_t capacity_;
+  uint32_t count_;
 } hash_map;
 //
 

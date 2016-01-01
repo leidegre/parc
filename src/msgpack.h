@@ -52,7 +52,7 @@ typedef enum msgpack_type {
   MSGPACK_TYPE_MAP16 = 0xDE,
   MSGPACK_TYPE_MAP32 = 0xDF,
   MSGPACK_TYPE_FIXINT_NEG = 0xE0
-};
+} msgpack_type;
 
 typedef enum msgpack_class {
   MSGPACK_CLASS_NONE,
@@ -140,7 +140,13 @@ int msgpack_write_str8(const char* s, size_t size, msgpack_writer* writer);
 int msgpack_write_str16(const char* s, size_t size, msgpack_writer* writer);
 int msgpack_write_str32(const char* s, size_t size, msgpack_writer* writer);
 
-int msgpack_write_str(const char* s, size_t size, msgpack_writer* writer);
+// *magic* function overloading based on number of arguments
+int _msgpack_write_str2(const char* s, msgpack_writer* writer);
+int _msgpack_write_str3(const char* s, size_t size, msgpack_writer* writer);
+#define _msgpack_write_str(_1, _2, _3, fname, ...) fname
+#define msgpack_write_str(...)                                              \
+  _msgpack_write_str(__VA_ARGS__, _msgpack_write_str3, _msgpack_write_str2, \
+                     __dummy__)(__VA_ARGS__)
 
 // REQUIRES: n <= 15
 int msgpack_write_fixmap(size_t n, msgpack_writer* writer);
@@ -182,5 +188,9 @@ double msgpack_value_to_float64(msgpack_value* value);
 int32_t msgpack_value_to_int32(msgpack_value* value);
 uint32_t msgpack_value_to_uint32(msgpack_value* value);
 
-// transpile json to msgpack format
+// transpile json to msgpack format (or vice versa)
 int msgpack_parse_json(const char* json, msgpack_writer* writer);
+
+struct json_writer;
+
+int msgpack_dump_json(msgpack_reader* reader, struct json_writer* writer);

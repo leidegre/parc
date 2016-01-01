@@ -194,8 +194,8 @@ int32_t msgpack_value_to_int32(msgpack_value* value) {
       return value->num_.int8_;
     }
   }
-  assert(0 && "not possible");
-  return -1;
+  assert(0 && "cannot cast value to int32");
+  return INT32_MIN;
 }
 
 uint32_t msgpack_value_to_uint32(msgpack_value* value) {
@@ -250,6 +250,6 @@ uint32_t msgpack_value_to_uint32(msgpack_value* value) {
       return (uint32_t)value->num_.int8_;
     }
   }
-  assert(0 && "not possible");
-  return (uint32_t)-1;
+  assert(0 && "cannot cast value to uint32");
+  return UINT32_MAX;
 }

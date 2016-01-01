@@ -5,7 +5,7 @@
 #include <string.h>
 
 void msgpack_writer_initialize(char* buffer, size_t buffer_size,
-                              msgpack_writer* writer) {
+                               msgpack_writer* writer) {
   writer->front_ = buffer;
   writer->back_ = buffer + buffer_size;
 }
@@ -102,7 +102,7 @@ int msgpack_write_str32(const char* s, size_t size, msgpack_writer* writer) {
   return 1;
 }
 
-int msgpack_write_str(const char* s, size_t size, msgpack_writer* writer) {
+int _msgpack_write_str3(const char* s, size_t size, msgpack_writer* writer) {
   if (size <= 31) {
     return msgpack_write_fixstr(s, size, writer);
   }
@@ -113,6 +113,10 @@ int msgpack_write_str(const char* s, size_t size, msgpack_writer* writer) {
     return msgpack_write_str16(s, size, writer);
   }
   return msgpack_write_str32(s, size, writer);
+}
+
+int _msgpack_write_str2(const char* s, msgpack_writer* writer) {
+  return _msgpack_write_str3(s, strlen(s), writer);
 }
 
 int msgpack_write_float32(float v, msgpack_writer* writer) {

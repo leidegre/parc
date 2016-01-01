@@ -2,33 +2,6 @@
 #include "test.h"
 #include "json.h"
 
-void dump_hex(const char *s, size_t size) {
-  static const char *kDigits = "0123456789ABCDEF";
-  const unsigned char *front = (unsigned char *)s;
-  const unsigned char *back = (unsigned char *)s + size;
-  while (front < back) {
-    char temp0[16 + 7 + 1];  // 00 11 22 33 44 55 66 77
-    char temp1[16 + 7 + 1];  // 88 99 AA BB CC DD EE FF
-    char temp2[16 + 1 + 1];  // ........ ........
-    memset(temp0, ' ', sizeof(temp0));
-    memset(temp1, ' ', sizeof(temp1));
-    memset(temp2, ' ', sizeof(temp2));
-    int count = 16 < (ptrdiff_t)(back - front) ? 16 : (int)(back - front);
-    for (int i = 0; i < count; i++) {
-      unsigned char b = *front++;
-      char *temp = i < 8 ? temp0 : temp1;
-      int x = i & 7;
-      temp[(x << 1) + 0 + x] = kDigits[b >> 4];
-      temp[(x << 1) + 1 + x] = kDigits[b & 15];
-      temp2[i + i / 8] = (' ' <= b) & (b <= '~') ? (char)b : '.';
-    }
-    temp0[sizeof(temp0) - 1] = '\0';
-    temp1[sizeof(temp1) - 1] = '\0';
-    temp2[sizeof(temp2) - 1] = '\0';
-    printf("%s- %s %s\n", temp0, temp1, temp2);
-  }
-}
-
 int main(int argc, char *argv[]) {
   test_initialize(argc, argv);
 
@@ -165,6 +138,88 @@ int main(int argc, char *argv[]) {
     const char *s = "\"q\\\"uot\"";
     json_unescape_string_literal(s, strlen(s), temp, sizeof(temp));
     ASSERT_EQUAL_STRLEN("q\"uot", temp, strlen(temp));
+  }
+
+  TEST_NEW("json_writer_number_literal_test") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_number(123, &w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("123", str, len);
+  }
+
+  TEST_NEW("json_writer_number_literal_test2") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_number(1.0 / 2, &w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("0.5", str, len);
+  }
+
+  TEST_NEW("json_writer_empty_string_literal_test") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_string("", strlen(""), &w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("\"\"", str, len);
+  }
+
+  TEST_NEW("json_writer_string_literal_test") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_string("abc", strlen("abc"), &w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("\"abc\"", str, len);
+  }
+
+  TEST_NEW("json_writer_empty_object_literal_test") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_object_begin(&w);
+    json_write_object_end(&w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("{\n\n}", str, len);
+  }
+
+  TEST_NEW("json_writer_object_test") {
+    char temp[256];
+    json_writer w;
+    json_writer_init(temp, sizeof(temp), &w);
+    json_write_object_begin(&w);
+
+    json_write_number(1, &w);
+    json_write_kv_separator(&w);
+    json_write_string("test", strlen("test"), &w);
+
+    json_write_list_separator(&w);
+    json_write_newline(&w);
+    json_write_number(2, &w);
+    json_write_kv_separator(&w);
+    json_write_array_begin(&w);
+    json_write_number(1, &w);
+    json_write_list_separator(&w);
+    json_write_newline(&w);
+    json_write_number(2, &w);
+    json_write_list_separator(&w);
+    json_write_newline(&w);
+    json_write_number(3, &w);
+    json_write_array_end(&w);
+
+    json_write_object_end(&w);
+    size_t len;
+    const char *str = json_writer_str(&w, &len);
+    ASSERT_EQUAL_STRLEN("{\n 1: \"test\",\n 2: [\n  1,\n  2,\n  3\n ]\n}", str,
+                        len);
   }
 
   return 0;

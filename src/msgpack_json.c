@@ -2,7 +2,8 @@
 #include "msgpack.h"
 #include "json.h"
 
-#include <stdlib.h> // strtod
+#include <stdlib.h>  // strtod
+#include <assert.h>
 
 static int msgpack_parse_json_value(json_parser* parser,
                                     msgpack_writer* writer);
@@ -136,4 +137,84 @@ int msgpack_parse_json(const char* json, msgpack_writer* writer) {
   json_parser parser;
   json_parser_initialize(json, &parser);
   return msgpack_parse_json_value(&parser, writer);
+}
+
+// JSON dump API
+
+int msgpack_dump_json(msgpack_reader* reader, json_writer* writer) {
+  msgpack_value v;
+  if (!msgpack_read_value(reader, &v)) {
+    return 0;
+  }
+  switch (msgpack_value_get_class(&v)) {
+    case MSGPACK_CLASS_INTEGER: {
+      if (!json_write_number(msgpack_value_to_int32(&v), writer)) {
+        return 0;
+      }
+      break;
+    }
+    case MSGPACK_CLASS_NIL: {
+      if (!json_write_null(writer)) {
+        return 0;
+      }
+      break;
+    }
+    case MSGPACK_CLASS_BOOLEAN: {
+      if (v.num_.int32_) {
+        if (!json_write_true(writer)) {
+          return 0;
+        }
+      } else {
+        if (!json_write_false(writer)) {
+          return 0;
+        }
+      }
+      break;
+    }
+    case MSGPACK_CLASS_STR: {
+      if (!json_write_string(v.s_, msgpack_value_to_uint32(&v), writer)) {
+        return 0;
+      }
+      break;
+    }
+    case MSGPACK_CLASS_ARRAY: {
+      json_write_array_begin(writer);
+      uint32_t count = msgpack_value_to_uint32(&v);
+      for (size_t i = 0; i < count; i++) {
+        if (i > 0) {
+          json_write_list_separator(writer);
+          json_write_newline(writer);
+        }
+        if (!msgpack_dump_json(reader, writer)) {
+          return 0;
+        }
+      }
+      json_write_array_end(writer);
+      break;
+    }
+    case MSGPACK_CLASS_MAP: {
+      json_write_object_begin(writer);
+      uint32_t count = msgpack_value_to_uint32(&v);
+      for (size_t i = 0; i < count; i++) {
+        if (i > 0) {
+          json_write_list_separator(writer);
+          json_write_newline(writer);
+        }
+        if (!msgpack_dump_json(reader, writer)) {
+          return 0;
+        }
+        json_write_kv_separator(writer);
+        if (!msgpack_dump_json(reader, writer)) {
+          return 0;
+        }
+      }
+      json_write_object_end(writer);
+      break;
+    }
+    default: {
+      assert(0 && "not implemented!");
+      return 0;
+    }
+  }
+  return 1;
 }

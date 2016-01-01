@@ -36,7 +36,9 @@ static void test_at_exit(void) {
          failed, failed == 1 ? "test" : "tests");
 }
 
-void test_initialize(int argc, char* argv[]) { atexit(&test_at_exit); }
+void test_initialize(int argc, char* argv[]) {
+  atexit(&test_at_exit);
+}
 
 void test_register(test_case* test) {
   test->next_ = g_test_context.last_;
@@ -46,6 +48,7 @@ void test_register(test_case* test) {
 int test_eval(test_case* test) {
   g_test_context.curr_ = test;
   putchar('.');  // progress indicator
+  fflush(stdout);
   return 1;
 }
 
@@ -56,17 +59,17 @@ void test_report_failure() {
   g_test_context.curr_ = NULL;
 }
 
-#define GEN_ASSERT_EQ(type, fmt)                                          \
+#define GEN_ASSERT_EQ(type, fmt)                                           \
   int _TEST_CONCAT(test_assert_eq_, type)(type expected, type actual,      \
-                                         const test_assert_metadata* m) { \
-    if (!(expected == actual)) {                                          \
-      test_report_failure();                                              \
-      const char* s = "%s(%i): %s == %s; " fmt " != " fmt "\n";           \
-      fprintf(stderr, s, m->file_, m->line_, m->expected_, m->actual_,    \
-              expected, actual);                                          \
-      return 0;                                                           \
-    }                                                                     \
-    return 1;                                                             \
+                                          const test_assert_metadata* m) { \
+    if (!(expected == actual)) {                                           \
+      test_report_failure();                                               \
+      const char* s = "%s(%i): %s == %s; " fmt " != " fmt "\n";            \
+      fprintf(stderr, s, m->file_, m->line_, m->expected_, m->actual_,     \
+              expected, actual);                                           \
+      return 0;                                                            \
+    }                                                                      \
+    return 1;                                                              \
   }
 
 GEN_ASSERT_EQ(int, "%i")

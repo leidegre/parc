@@ -19,6 +19,8 @@ int main(int argc, char* argv[]) {
     parc_parser_init(s, &parser);
     parc_parser_main(&parser);
 
+    return 0;
+
     char temp[4096];
     parc_syntax_tree_debug(parser.stack_, temp, sizeof(temp));
     puts(temp);
