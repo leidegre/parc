@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{98652A22-0563-4090-B132-848C9AAFD102}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Parc</RootNamespace>
+    <AssemblyName>parctool</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.GLEE">
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Research\GLEE\bin\Microsoft.GLEE.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.GLEE.Drawing">
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Research\GLEE\bin\Microsoft.GLEE.Drawing.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.GLEE.GraphViewerGDI">
+      <HintPath>..\..\..\Program Files (x86)\Microsoft Research\GLEE\bin\Microsoft.GLEE.GraphViewerGDI.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Reactive.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rx-Core.2.3.0-beta2\lib\net45\System.Reactive.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Reactive.Interfaces, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rx-Interfaces.2.3.0-beta2\lib\net45\System.Reactive.Interfaces.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Reactive.Linq, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rx-Linq.2.3.0-beta2\lib\net45\System.Reactive.Linq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Reactive.PlatformServices, Version=2.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rx-PlatformServices.2.3.0-beta2\lib\net45\System.Reactive.PlatformServices.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="WindowsFormsIntegration" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Binder.cs" />
+    <Compile Include="CfGraph.cs" />
+    <Compile Include="CfNode.cs" />
+    <Compile Include="CfProjection.cs" />
+    <Compile Include="CfEdge.cs" />
+    <Compile Include="Compilation.cs" />
+    <Compile Include="Compiler.cs" />
+    <Compile Include="ControlFlow.cs" />
+    <Compile Include="CSharpUtility.cs" />
+    <Compile Include="GleeContext.cs" />
+    <Compile Include="GraphViewerUserControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GraphViewerUserControl.Designer.cs">
+      <DependentUpon>GraphViewerUserControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GraphVisual.cs" />
+    <Compile Include="Lexer.cs" />
+    <Compile Include="ListStack.cs" />
+    <Compile Include="MultiMap.cs" />
+    <Compile Include="NameTable.cs" />
+    <Compile Include="Parser.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ReferenceEquality.cs" />
+    <Compile Include="DfaConstruction.cs" />
+    <Compile Include="SyntaxTree.cs" />
+    <Compile Include="SyntaxViewerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SyntaxViewerForm.Designer.cs">
+      <DependentUpon>SyntaxViewerForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SyntaxVisitor.cs" />
+    <Compile Include="UI\CompilerInfrastructure.cs" />
+    <Compile Include="UI\GraphViewerComponent.xaml.cs">
+      <DependentUpon>GraphViewerComponent.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\DelegateCommand.cs" />
+    <Compile Include="UI\GraphViewerViewModel.cs" />
+    <Compile Include="UI\ObservableObject.cs" />
+    <Compile Include="UI\ObservableObjectFor`1.cs" />
+    <Compile Include="UI\TextEditor.xaml.cs">
+      <DependentUpon>TextEditor.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\TextEditorViewModel.cs" />
+    <Compile Include="UI\UIHost.xaml.cs">
+      <DependentUpon>UIHost.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\Container.cs" />
+    <Compile Include="UI\UIHostComponent.cs" />
+    <Compile Include="UI\UIHostViewModel.cs" />
+    <Compile Include="UI\UserControl.cs" />
+    <Compile Include="UI\WindowManager.xaml.cs">
+      <DependentUpon>WindowManager.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\WindowManagerViewModel.cs" />
+    <Compile Include="Visualization.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="GraphViewerUserControl.resx">
+      <DependentUpon>GraphViewerUserControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SyntaxViewerForm.resx">
+      <DependentUpon>SyntaxViewerForm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="UI\GraphViewerComponent.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\TextEditor.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\UIHost.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\WindowManager.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
