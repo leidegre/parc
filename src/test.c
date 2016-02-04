@@ -59,6 +59,22 @@ void test_report_failure() {
   g_test_context.curr_ = NULL;
 }
 
+int test_assert_eq_str(const test_str* expected, const test_str* actual,
+                       const test_assert_metadata* m) {
+  if (!(expected->size_ == actual->size_ &&
+        memcmp(expected->data_, actual->data_, expected->size_) == 0)) {
+    test_report_failure();
+    char temp[64];
+    sprintf(temp, actual->size_ < 50 ? "<%.*s>" : "<%.*s...",
+            actual->size_ < 50 ? (int)actual->size_ : 50, actual->data_);
+    fprintf(stderr, "%s(%i): %s == %s; <%.*s> != %s\n", m->file_, m->line_,
+            m->expected_, m->actual_, (int)expected->size_, expected->data_,
+            temp);
+    return 0;
+  }
+  return 1;
+}
+
 #define GEN_ASSERT_EQ(type, fmt)                                           \
   int _TEST_CONCAT(test_assert_eq_, type)(type expected, type actual,      \
                                           const test_assert_metadata* m) { \

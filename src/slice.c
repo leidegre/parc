@@ -3,15 +3,15 @@
 
 #include <string.h>
 
-parc_slice parc_slice_create(const char *data, const size_t size) {
+parc_slice _parc_slice_create1(const char *str) {
+  return _parc_slice_create2(str, strlen(str));
+}
+
+parc_slice _parc_slice_create2(const char *data, const size_t size) {
   parc_slice s;
   s.data_ = data;
   s.size_ = size;
   return s;
-}
-
-parc_slice parc_slice_create_from_string(const char *str) {
-  return parc_slice_create(str, strlen(str));
 }
 
 int parc_slice_compare(const parc_slice a, const parc_slice b) {

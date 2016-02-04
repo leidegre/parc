@@ -17,13 +17,6 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(__cplusplus) && !defined(__bool_true_false_are_defined)
-typedef unsigned char bool;
-#endif
-
-typedef unsigned char byte;
-
-typedef struct parc_clob parc_clob;
 typedef struct parc_token parc_token;
 typedef struct parc_lexer parc_lexer;
 typedef struct parc_parser parc_parser;
@@ -31,7 +24,11 @@ typedef struct parc_syntax_tree parc_syntax_tree;
 typedef struct parc_syntax_node parc_syntax_node;
 typedef struct parc_syntax_token parc_syntax_token;
 
-typedef enum parc_error {
+// forward declarations for intermidate representation
+struct msgpack_writer;
+struct msgpack_reader;
+
+typedef enum {
   // No error, operation completed successfully
   PARC_ERROR_OK = 0,
   // Not an error, but the operation did not do anything, end of file was
@@ -76,6 +73,12 @@ struct parc_token {
   int line_num_;
   int char_pos_;
 };
+
+// token API
+
+int parc_token_store(const parc_token *token, struct msgpack_writer *writer);
+
+int parc_token_load(struct msgpack_reader *reader, parc_token *token);
 
 // parc_lexer API
 
@@ -122,8 +125,8 @@ struct parc_syntax_token {
   parc_token token_;
 };
 
-int parc_syntax_tree_debug(parc_syntax_tree *tree, char *buffer,
-                           size_t buffer_size);
+int parc_syntax_tree_dump(parc_syntax_tree *tree,
+                          struct msgpack_writer *writer);
 
 // parser API
 
@@ -134,7 +137,9 @@ struct parc_parser {
   parc_error error_;
 };
 
-void parc_parser_init(const char *source, parc_parser *parser);
+void parc_parser_init(const char *data, const size_t size, parc_parser *parser);
+
+parc_syntax_tree *parc_parser_syntax(parc_parser *parser);
 
 int parc_parser_main(parc_parser *parser);
 

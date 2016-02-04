@@ -4,8 +4,8 @@
 #include <string.h>
 #include <assert.h>
 
-void msgpack_reader_initialize(const char* buffer, size_t buffer_size,
-                               msgpack_reader* reader) {
+void msgpack_reader_init(const char* buffer, const size_t buffer_size,
+                         msgpack_reader* reader) {
   memset(reader, 0, sizeof(*reader));
   reader->front_ = buffer;
   reader->back_ = buffer + buffer_size;
@@ -73,7 +73,9 @@ void msgpack_read_raw_uint64(msgpack_reader* reader, uint64_t* v) {
   reader->front_ = (const char*)x;
 }
 
-void msgpack_read_raw_str(msgpack_reader* reader, size_t size, const char** s) {
+void msgpack_read_raw_str(msgpack_reader* reader, const size_t size,
+                          const char** s) {
+  assert((reader->front_ + size) <= reader->back_);  // sanity check
   *s = reader->front_;
   reader->front_ += size;
 }
@@ -142,7 +144,7 @@ int msgpack_value_is_class(msgpack_value* value, msgpack_class class_) {
   return msgpack_value_get_class(value) == class_;
 }
 
-int32_t msgpack_value_to_int32(msgpack_value* value) {
+int32_t msgpack_value_to_int32(const msgpack_value* value) {
   switch (value->type_) {
     case MSGPACK_TYPE_FIXINT_POS:
     case MSGPACK_TYPE_FIXMAP:
@@ -198,7 +200,7 @@ int32_t msgpack_value_to_int32(msgpack_value* value) {
   return INT32_MIN;
 }
 
-uint32_t msgpack_value_to_uint32(msgpack_value* value) {
+uint32_t msgpack_value_to_uint32(const msgpack_value* value) {
   switch (value->type_) {
     case MSGPACK_TYPE_FIXINT_POS:
     case MSGPACK_TYPE_FIXMAP:

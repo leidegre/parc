@@ -25,18 +25,30 @@ local win32_env = {
 
 local macosx_env = {
   Env = {
+    CLANG_PATH = "~/Downloads/clang+llvm-3.7.0-x86_64-apple-darwin/bin",
     CCOPTS = {
-      "-fcolor-diagnostics", -- Enable color output
+      "-fcolor-diagnostics",
+      -- Treat these warnings as errors
       "-Werror=return-type", -- control reaches end of non-void function
+      "-Werror=format", -- printf style format string
       -- C99
       "-std=c99",
       "-pedantic-errors",
+      -- Debug
+      "-g",
+      -- "-O1",
+      -- QA
+      "-fsanitize=address",
+      "-fno-omit-frame-pointer",
+    },
+    PROGOPTS = {
+      "-fsanitize=address",
     },
   },
 }
 
 Build {
-  ScriptDirs = { "tundra-scripts" },
+  ScriptDirs = { "t2-scripts" },
   Units = function (args)
     local lib = StaticLibrary {
       Name = "parclib",
@@ -95,7 +107,7 @@ Build {
     },
     Config {
       Name = "macosx-clang",
-      Tools = { { "clang-osx" } },
+      Tools = { { "clang_path-osx" } },
       SupportedHosts = { "macosx" },
       DefaultOnHost = "macosx",
       Inherit = macosx_env,

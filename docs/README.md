@@ -36,4 +36,12 @@ While there is no such thing as a member function in C a struct `some_struct` wi
 Function overloading
 ===
 
-There's a simple way to accomplish function overloading based on the number of arguments passed. We use this trick whenever a function accepts both a C-style null terminated string and length-delimited value. For example, the `msgpack_write_str` function can be called either with a C-style null terminated string or length-delimited value. Either `msgpack_write_str("hello", &writer)` or `msgpack_write_str("hello", 5, &writer)` is fine.
+C does not support function overloading. Instead we incorporate a naming convention into the function name to support common types. For example:
+
+- `char` -> `_char`
+- `int` -> `_int`
+- `unsigned int` -> `_uint`
+- `void*` -> `_ptr`
+- `const char *`, `size_t` -> `_str`; *note: length-delimited*
+
+Note that we do not pass strings with the expectation that they are null terminated. While this might be true we always expect that the string size (bytes **NOT** characters) is passed alongside string arguments, always.

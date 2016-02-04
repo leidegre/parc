@@ -71,10 +71,18 @@ static void parc_parser_reduce(parc_parser *parser, const char *label,
   parc_parser_push(parser, &syntax_node->base_);
 }
 
-void parc_parser_init(const char *source, parc_parser *parser) {
+void parc_parser_init(const char *data, const size_t size,
+                      parc_parser *parser) {
   memset(parser, 0, sizeof(*parser));
-  parc_lexer_init(source, strlen(source), &parser->lexer_);
+  parc_lexer_init(data, size, &parser->lexer_);
   parc_lexer_next(&parser->lexer_, &parser->token_);
+}
+
+parc_syntax_tree *parc_parser_syntax(parc_parser *parser) {
+  if (parser->error_) {
+    return NULL;
+  }
+  return parser->stack_;
 }
 
 static int parc_parse_grammar_unit(parc_parser *parser);

@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // This is a lean and mean implementation of the
 // MessagePack http://msgpack.org/index.html spec.
 
@@ -56,6 +60,7 @@ typedef enum msgpack_type {
 
 typedef enum msgpack_class {
   MSGPACK_CLASS_NONE,
+  // any integer (signed or unsigned)
   MSGPACK_CLASS_INTEGER,
   MSGPACK_CLASS_NIL,
   MSGPACK_CLASS_BOOLEAN,
@@ -70,6 +75,7 @@ typedef enum msgpack_class {
 typedef struct msgpack_writer {
   char* front_;
   char* back_;
+  char* begin_;
 } msgpack_writer;
 
 typedef struct msgpack_value {
@@ -96,8 +102,12 @@ typedef struct msgpack_reader {
 
 // msgpack writer API
 
-void msgpack_writer_initialize(char* buffer, size_t buffer_size,
-                               msgpack_writer* writer);
+void msgpack_writer_init(char* buffer, size_t buffer_size,
+                         msgpack_writer* writer);
+
+size_t msgpack_writer_size(msgpack_writer* writer);
+
+const char* msgpack_writer_data(msgpack_writer* writer, size_t* size);
 
 // check that writer has enough free space
 int msgpack_writer_ensure(msgpack_writer* writer, uint32_t required);
@@ -139,14 +149,7 @@ int msgpack_write_fixstr(const char* s, size_t size, msgpack_writer* writer);
 int msgpack_write_str8(const char* s, size_t size, msgpack_writer* writer);
 int msgpack_write_str16(const char* s, size_t size, msgpack_writer* writer);
 int msgpack_write_str32(const char* s, size_t size, msgpack_writer* writer);
-
-// *magic* function overloading based on number of arguments
-int _msgpack_write_str2(const char* s, msgpack_writer* writer);
-int _msgpack_write_str3(const char* s, size_t size, msgpack_writer* writer);
-#define _msgpack_write_str(_1, _2, _3, fname, ...) fname
-#define msgpack_write_str(...)                                              \
-  _msgpack_write_str(__VA_ARGS__, _msgpack_write_str3, _msgpack_write_str2, \
-                     __dummy__)(__VA_ARGS__)
+int msgpack_write_str(const char* s, size_t size, msgpack_writer* writer);
 
 // REQUIRES: n <= 15
 int msgpack_write_fixmap(size_t n, msgpack_writer* writer);
@@ -164,8 +167,8 @@ int msgpack_write_array(size_t n, msgpack_writer* writer);
 
 // msgpack reader API
 
-void msgpack_reader_initialize(const char* buffer, size_t buffer_size,
-                               msgpack_reader* reader);
+void msgpack_reader_init(const char* buffer, const size_t buffer_size,
+                         msgpack_reader* reader);
 
 int msgpack_reader_ensure(msgpack_reader* reader, uint32_t required);
 
@@ -175,7 +178,8 @@ void msgpack_read_raw_uint8(msgpack_reader* reader, uint8_t* v);
 void msgpack_read_raw_uint16(msgpack_reader* reader, uint16_t* v);
 void msgpack_read_raw_uint32(msgpack_reader* reader, uint32_t* v);
 void msgpack_read_raw_uint64(msgpack_reader* reader, uint64_t* v);
-void msgpack_read_raw_str(msgpack_reader* reader, size_t size, const char** s);
+void msgpack_read_raw_str(msgpack_reader* reader, const size_t size,
+                          const char** s);
 
 int msgpack_read_value(msgpack_reader* reader, msgpack_value* value);
 
@@ -183,10 +187,10 @@ msgpack_class msgpack_value_get_class(msgpack_value* value);
 
 int msgpack_value_is_class(msgpack_value* value, msgpack_class class_);
 
-float msgpack_value_to_float32(msgpack_value* value);
-double msgpack_value_to_float64(msgpack_value* value);
-int32_t msgpack_value_to_int32(msgpack_value* value);
-uint32_t msgpack_value_to_uint32(msgpack_value* value);
+float msgpack_value_to_float32(const msgpack_value* value);
+double msgpack_value_to_float64(const msgpack_value* value);
+int32_t msgpack_value_to_int32(const msgpack_value* value);
+uint32_t msgpack_value_to_uint32(const msgpack_value* value);
 
 // transpile json to msgpack format (or vice versa)
 int msgpack_parse_json(const char* json, msgpack_writer* writer);
@@ -194,3 +198,7 @@ int msgpack_parse_json(const char* json, msgpack_writer* writer);
 struct json_writer;
 
 int msgpack_dump_json(msgpack_reader* reader, struct json_writer* writer);
+
+#ifdef __cplusplus
+}
+#endif

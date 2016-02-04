@@ -33,20 +33,14 @@
 
 #define ASSERT_EQUAL_INT(expected, actual) _ASSERT_EQUAL(int, expected, actual)
 
-#define ASSERT_EQUAL_STRLEN(expected, actual, length)                        \
-  do {                                                                       \
-    if (!(strlen(expected) == length &&                                      \
-          strncmp(expected, actual, length) == 0)) {                         \
-      test_report_failure();                                                 \
-      char temp[64];                                                         \
-      const char* fmt;                                                       \
-      fmt = length < 50 ? "%.*s" : "%.*s...";                                \
-      sprintf(temp, fmt, length < 50 ? length : 50, actual);                 \
-      fmt = "%s(%i): %s == %s; <%s> != <%s>\n";                              \
-      fprintf(stderr, fmt, __FILE__, __LINE__, #expected, #actual, expected, \
-              temp);                                                         \
-      return 1;                                                              \
-    }                                                                        \
+#define ASSERT_EQUAL_STRLEN(expected, actual, actual_size)             \
+  do {                                                                 \
+    test_assert_metadata m = {__FILE__, __LINE__, #expected, #actual}; \
+    test_str expected2 = {expected, strlen(expected)};                 \
+    test_str actual2 = {actual, (size_t)actual_size};                  \
+    if (!test_assert_eq_str(&expected2, &actual2, &m)) {               \
+      return 1;                                                        \
+    }                                                                  \
   } while (0)
 
 #define TEST_NEW(test_name)                                           \
@@ -71,12 +65,20 @@ int test_eval(test_case* test);
 
 void test_report_failure();
 
+typedef struct test_str {
+  const char* data_;
+  size_t size_;
+} test_str;
+
 typedef struct test_assert_metadata {
   const char* file_;
   int line_;
   const char* expected_;
   const char* actual_;
 } test_assert_metadata;
+
+int test_assert_eq_str(const test_str* expected, const test_str* actual,
+                       const test_assert_metadata* m);
 
 int test_assert_eq_uint8_t(uint8_t expected, uint8_t actual,
                            const test_assert_metadata* m);

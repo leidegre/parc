@@ -16,14 +16,10 @@ int main(int argc, char* argv[]) {
 
     // first we do semantic analysis to create a syntax tree
     parc_parser parser;
-    parc_parser_init(s, &parser);
+    parc_parser_init(s, strlen(s), &parser);
     parc_parser_main(&parser);
 
     return 0;
-
-    char temp[4096];
-    parc_syntax_tree_debug(parser.stack_, temp, sizeof(temp));
-    puts(temp);
 
     // we then check that the syntax tree is OK,
     // and that it does not have ambiguities.
@@ -40,7 +36,7 @@ int main(int argc, char* argv[]) {
       hash_map_iter_create(&g->adjacency_list_, &it);
       while (hash_map_iter_next(&it)) {
         parc_nfa_edge* edge = (parc_nfa_edge*)hash_map_value_get(it.current_);
-        printf("%p %3i -> %3i (%x)\n", edge, edge->u_->node_id_,
+        printf("%p %3i -> %3i (%x)\n", (void*)edge, edge->u_->node_id_,
                edge->v_->node_id_, edge->flags_);
         parc_nfa_guard* guard = edge->guard_set_;
         while (guard) {

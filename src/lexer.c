@@ -31,11 +31,11 @@ static int utf8_get_mb_count(unsigned int v) {
   return -1;
 }
 
-static bool is_white_space(const int ch) {
+static int is_white_space(const int ch) {
   return (ch == '\t') | (ch == '\n') | (ch == '\r') | (ch == ' ');
 }
 
-static bool is_between(const int ch, const int lower, const int upper) {
+static int is_between(const int ch, const int lower, const int upper) {
   return (lower <= ch) & (ch <= upper);
 }
 
@@ -47,7 +47,7 @@ static int parc_lexer_load(parc_lexer *lexer) {
     lexer->error_ = PARC_ERROR_END_OF_FILE;
     return 0;
   }
-  byte *b = (byte *)lexer->head_;
+  uint8_t *b = (uint8_t *)lexer->head_;
   int n = utf8_get_mb_count(b[0]);
   if (!(lexer->head_ + n <= lexer->end_)) {
     lexer->ch_ = 0;
