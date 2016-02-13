@@ -25,9 +25,27 @@ The lexer has the following operations
 
 # Coding conventions
 
-## Member variables
+## Naming conventions
 
-Member variables are suffixed with an underscore `_` 
+When choosing a name, prefer long names to abbreviated names. Prefer descriptive names to arbitrary ones.
 
-This is also used to declare intent, you should consider these to be **private**.
+> **NOTE:** In no case should any name or label (for a variable, class, namespace, file, and so on) run words together without any kind of delineation (such as an underscore or a change in case according to the standards set herein).
 
+### Local variables (incl. parameters)
+
+- No leading underscores.
+- No trailing underscores.
+- `lower_case_underscores`
+
+> **Exception:** in a temporary small scope single letter (or really short) identifiers are OK.
+
+### Member variables (aka data members)
+
+- No leading underscores.
+- Single trailing underscore.
+- `lower_case_single_underscore_at_end_`
+
+### Functions
+
+- PascalCase
+- No underscores.

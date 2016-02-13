@@ -1,4 +1,4 @@
 ---
 ecmaFeatures:
-  blockBindings: yes
+  blockBindings: no
   
