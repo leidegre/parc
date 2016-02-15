@@ -1,4 +1,7 @@
----
-ecmaFeatures:
-  blockBindings: no
-  
+env:
+  node: true
+  es6: true
+rules:
+  strict: [2, "global"]
+  no-undef: 1
+  consistent-return: 2

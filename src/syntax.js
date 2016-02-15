@@ -32,12 +32,20 @@ function SyntaxTree(label, children) {
 SyntaxTree.prototype = Object.create(SyntaxNode.prototype)
 SyntaxTree.prototype.constructor = SyntaxTree
 
-SyntaxTree.prototype.toString = function(indentation) {
-  if (this.children_.length > 1) {
-    indentation = (indentation || '') + ' ' // pretty formatting
-    return `(${this.label_}${this.children_.map((x) => '\n' + indentation + x.toString(indentation)).join('')})`
+function indent(space, level) {
+  var s = '\n'
+  for (var i = 0, n = space * level; i < n; i++) {
+    s += ' '
+  }
+  return (x) => 
+    x.constructor === SyntaxTree ? s + x.toString(space, level) : x.toString()
+}
+
+SyntaxTree.prototype.toString = function(space, level) {
+  if (space) {
+    return `(${this.label_} ${this.children_.map(indent(space, (level || 0) + 1)).join(' ')})`
   } else {
-    return `(${this.label_} ${this.children_[0].toString(indentation)})`
+    return `(${this.label_} ${this.children_.join(' ')})`
   }
 }
 

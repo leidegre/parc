@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/leidegre/parc#readme",
   "devDependencies": {
+    "immutable": "^3.7.6",
     "tape": "^4.4.0"
   }
 }

@@ -40,6 +40,19 @@ test('lex string literal', function (t) {
   t.equal(lex.token_.s_.toString(), '"hello world"')
 })
 
+test('lex escape sequence', function (t) {
+  t.plan(3)
+  
+  var lex = new Lexer('"\\""')
+  
+  lex.load() 
+  
+  t.ok(lex.next())
+  
+  t.ok(lex.token_)
+  t.equal(lex.token_.s_.toString(), '"\\""')
+})
+
 test('lex local', function (t) {
   t.plan(4)
   
