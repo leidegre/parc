@@ -1,4 +1,4 @@
-"use strict"
+'use strict'
 
 // Slice
 function Slice(s, begin, end) {
