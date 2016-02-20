@@ -8,6 +8,9 @@ const CFGraph = require('./control-flow-graph')
 var syntax = require('./syntax')
   , SyntaxTree = syntax.SyntaxTree
 
+/**
+ * @property {Immutable.Stack} stack_
+ */
 function SyntaxVisitor() {
   this.graph_ = new CFGraph()
   // a quick note about that stack, each visiting function can expect that stack to be non-empty
@@ -38,25 +41,21 @@ SyntaxVisitor.prototype.Namespace = function(node) {
 
 SyntaxVisitor.prototype.Token = function(node) {
   console.log('visiting Token node')
-  
-  // this will introduce a new symbol
-  
   const symbol = node.children_[0]
-  
+  var root = this.graph_.newNode()
   // todo: define symbol
-  
-  // this node is an entry point for this tokenization rule
-  var entryPoint = this.graph_.newNode()
-  
-  this.stack_ = this.stack_.push(entryPoint)
-  
+  this.stack_ = this.stack_.push(root)
   for (var i = 2, end = node.children_.length - 1; i < end; i++) {
     this.__accept__(node.children_[i])
+    const next = this.stack_.peek()
+    this.stack_ = this.stack_
+      .pop()
+      .pop()
+      .push(next)
   }
-  
-  this.stack_ = this.stack_.pop()
 }
 
+// literal will grow the stack size
 SyntaxVisitor.prototype.Literal = function(node) {
   console.log('visiting Literal node')
   

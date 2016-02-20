@@ -36,6 +36,30 @@ Token.slice = function (s, begin, end) {
   return new Slice(s, begin, end)
 }
 
+/**
+ * unescape string literal (i.e. expand each escape sequence)
+ * @param {string} s
+ */
+Token.unescape = function(s) {
+  let unescaped = ''
+  for (let i = 1, end = s.length - 1; i < end;) { // strip leading/trailing double quotes
+    let charCode = s.charCodeAt(i++) // read
+    if (charCode == 92) { // '/'
+      charCode = s.charCodeAt(i++)
+      switch (charCode) {
+        case 9: unescaped += '\t'; break
+        case 10: unescaped += '\n'; break
+        case 13: unescaped += '\r'; break
+        case 34: unescaped += '"'; break
+        case 92: unescaped += '\\'; break
+      }
+    } else {
+      unescaped += String.fromCharCode(charCode)
+    }
+  }
+  return unescaped
+}
+
 // static member
 Token.TYPE = Object.freeze({
   WHITE_SPACE: 'WHITE_SPACE',

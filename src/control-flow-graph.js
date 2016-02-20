@@ -46,12 +46,26 @@ CFGraph.prototype.newEdge = function(source, target) {
   return edge
 }
 
+function edgeComparator(x, y) {
+  // by source id, then by target id
+  return x.source_.id_ != y.source_.id_ 
+    ? x.source_.id_ - y.source_.id_ 
+    : x.target_.id_ - y.target_.id_  
+}
+
 CFGraph.prototype.toJSON = function () {
   // doesn't matter if we go by source or target but are complete edge lists
   const edges = this.edges_by_source_
+    .valueSeq()
+    .map((v) => new Immutable.Seq(v))
+    .flatten()
+    .sort(edgeComparator)
   return {
-    nodes: this.nodes_.map((node) => ({ id: node.id_ })),
-    edges: edges.map((v) => Immutable.List(v)).flatten().map((e) => ({ from: e.source_.id_, to: e.target_.id_, guard_set: e.guard_set_ ? e.guard_set_ : undefined })).toArray(),
+    nodes: this.nodes_.map((node) => ({ 
+      id: node.id_,
+      edges: this.edges_by_source_.has(node) ? this.edges_by_source_.get(node).map((e) => ({ target: e.target_.id_, guard_set: e.guard_set_ ? e.guard_set_ : undefined })) : undefined
+    }))
+    // edges: edges.map((e) => ({ uv: [e.source_.id_, e.target_.id_], guard_set: e.guard_set_ ? e.guard_set_ : undefined })).toArray(),
   }
 }
 

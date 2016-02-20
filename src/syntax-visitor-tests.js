@@ -7,6 +7,9 @@ var Particle = require('./')
 
 test('syntax visitor', function(t) {
   var syntax = Particle.parse('"parc" { local = "\\"" ^ "\\"" * "\\"" ; }')
+  
+  console.log(syntax.toString(1))
+  
   var visitor = new SyntaxVisitor()
   visitor.__accept__(syntax)
   

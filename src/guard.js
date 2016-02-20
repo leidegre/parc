@@ -10,12 +10,12 @@ function Guard() {
 
 // static
 Guard.fromLiteral = function(not, literal) {
-  return new TokenGuard(not, literal, literal)  
+  return new TokenGuard(not, literal, literal)
 }
 
 // static
 Guard.fromRange = function(not, lower, upper) {
-  return new TokenGuard(not, lower, upper)  
+  return new TokenGuard(not, lower, upper)
 }
 
 function TokenGuard(not, lower, upper) {
@@ -27,5 +27,18 @@ function TokenGuard(not, lower, upper) {
 // TokenGuard extends Guard
 TokenGuard.prototype = Object.create(Guard.prototype)
 TokenGuard.prototype.constructor = TokenGuard
+
+function toGuardString(token) {
+  var s = token.s_.toString()
+  return token.type_ == Token.TYPE.STRING_LITERAL ? Token.unescape(s) : s
+}
+
+TokenGuard.prototype.toJSON = function() {
+  return {
+    not: this.not_,
+    lower: toGuardString(this.lower_.token_),
+    upper: toGuardString(this.upper_.token_)
+  }
+}
 
 module.exports = Guard
