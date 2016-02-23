@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="../static/bundle.js" charset="utf-8"></script>
+  <style>
+  .link { stroke: #ccc; stroke-width: 1px }
+  .label {
+    text-anchor: middle;
+    alignment-baseline: middle;
+    font-family: 'Consolas';
+    font-size: 10pt;
+    stroke: none;
+  }
+  .label.label-node {
+    fill: #009;
+  }
+  .label.label-token {
+    fill: #090;
+  }
+  svg { position:fixed; top:0; left:0; z-index: -1001 }
+  textarea { opacity: 0.5; border: none }
+  textarea:focus { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+<textarea id='text' cols="80" rows="10">
+"parc" { 
+  a = "A" ("B" | "C") "D" ;
+}
+</textarea>
+  
+<script>
+
+function render(root) {
+  function computeLabelStyle(d) {
+    return d.type == 'TREE' ? 'label label-node' : 'label label-token' 
+  }
+  function computeLabel(d) {
+    return d.type == 'TREE' ? d.label : `${d.token.type} ${d.token.s}`
+  }
+  
+  var width = document.documentElement.clientWidth,
+      height = document.documentElement.clientHeight,
+      padding = 0.1
+        
+  var tree = d3.layout.tree()
+    .size([(1-padding)*width, (1-padding)*height])
+
+  d3.selectAll("svg").remove()
+
+  var svg = d3.select("body")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", `translate(${padding*width / 2},${padding*height / 2})`)
+    
+  var nodes = tree.nodes(root),
+      links = tree.links(nodes)
+
+  var link = svg.selectAll(".link")
+    .data(links)
+    .enter()
+      .append("line")
+      .attr("class", "link")
+      .attr("x1", (d) => d.source.x)
+      .attr("y1", (d) => d.source.y)
+      .attr("x2", (d) => d.target.x)
+      .attr("y2", (d) => d.target.y)
+
+  var node = svg.selectAll(".node")
+    .data(nodes)
+    .enter()
+      .append("g")
+      .attr("class", "node")
+      .attr("transform", (d) => `translate(${d.x},${d.y})`)
+
+  node
+    .append("text")
+    .attr("class", computeLabelStyle)
+    .text(computeLabel)    
+}
+
+function memoize(fn) {
+  var prevArg
+  var prevResult
+  return (arg) => {
+    if (arg !== prevArg) {
+      prevArg = arg
+      prevResult = fn(arg)
+    }
+    return prevResult
+  }
+}
+
+var update = memoize((value) => {
+  var syntax = particle.parse(value).toJSON()
+  render(syntax)
+})
+  
+var textarea = document.getElementById('text')
+
+textarea.addEventListener('keyup', (e) => {
+  update(e.target.value)
+})
+
+textarea.dispatchEvent(new Event('keyup'))
+  
+</script>
+  
+</body>
+</html>

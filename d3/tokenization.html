@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="../static/bundle.js" charset="utf-8"></script>
+  <style>
+
+  .node {
+    fill: #fff;
+    stroke: #000;
+  }
+
+  .edge {
+    fill: none;
+    stroke: #000;
+    opacity: 0.25;
+  }
+  
+  .edge-backlink {
+    fill: none;
+    stroke: #00f;
+  }
+  
+  .end {
+    fill: #000;
+    stroke: #000;
+  }
+  
+  .end-backlink {
+    fill: #00f;
+    stroke: #00f;
+  }
+  
+  .label {
+    text-anchor: middle;
+    alignment-baseline: middle;
+    font-family: 'Consolas';
+    fill: #000;
+    stroke: none;
+  }
+  
+  .label.label-node {
+    opacity: 0.25;
+  }
+  
+  .label.label-edge {
+  }
+
+  svg { position:fixed; top:0; left:0; z-index: -1001 }
+  </style>
+</head>
+<body>
+
+<textarea id='text' cols="80" rows="10">
+"parc" { 
+  a = "A" ("B" | "C") "D" ;
+}
+</textarea>
+  
+<script>
+
+function render(g) {
+  function computeEdgeStyle(className) {
+    return (edge) => edge.is_backlink ? `${className}-backlink` : `${className}` 
+  }
+
+  function computeEdgeMarker(className) {
+    return (edge) => edge.is_backlink ? `url(#${className}-backlink)` : `url(#${className})`
+  }
+
+  function computeEdgeString(edge) {
+    return edge.guard_set.map((guard) => guard.toString()).toArray().join(',')
+  }
+
+  function lineOffset(a, b, r) {
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const dr = Math.sqrt(dx * dx + dy * dy)
+    const normalize = r / dr
+    return { x: a.x + normalize * dx, y: a.y + normalize * dy }
+  }  
+  
+  var width = document.documentElement.clientWidth,
+      height = document.documentElement.clientHeight,
+      nodeSize = 30
+
+  var force = d3.layout.force()
+    .gravity(0.5)
+    .charge(-300 * nodeSize)
+    .chargeDistance(10 * nodeSize)
+    .linkDistance(3 * nodeSize)
+    .size([width, height])
+  
+  d3.select("svg").remove()
+  
+  var svg = d3.select("body")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+
+  svg.append("defs")
+    .selectAll("marker")
+    .data(["end", "end-backlink"])
+    .enter()
+      .append("marker")
+      .attr("id", String)
+      .attr("viewBox", "-1 -1 2 2")
+      .attr("refX", 0)
+      .attr("refY", 0)
+      .attr("markerWidth", nodeSize / 2)
+      .attr("markerHeight", nodeSize / 2)
+      .attr("orient", "auto")
+      .append("path")
+        .attr("d", "M -1,1 L 0,0 L -1,-1")
+        .attr("stroke-width", "0.1")
+        .attr("class", String)
+
+  force
+    .nodes(g.nodes)
+    .links(g.edges)
+    .start()
+
+  var edge = svg.selectAll(".edge")
+    .data(g.edges)
+    .enter()
+      .append("g")
+
+  var edgePath = edge
+    .append("path")
+    .attr("class", computeEdgeStyle("edge"))
+    .attr("marker-end", computeEdgeMarker("end"))
+
+  var edgeLabel = edge
+    .append("text")
+    .attr("class", "label label-edge")
+    .text(computeEdgeString)
+
+  var node = svg.selectAll(".node")
+    .data(g.nodes)
+    .enter()
+      .append("g")
+      .attr("class", "node")
+
+  node
+    .append("circle")
+    .attr("r", nodeSize)
+
+  node
+    .filter((node) => node.is_accept_state)
+    .append("circle")
+    .attr("r", 0.9*nodeSize)
+
+  node
+    .append("text")
+    .attr("class", "label label-node")
+    .text((node) => node.id)
+
+  force.on("tick", function() {
+    edgePath
+      .attr("d", function(d) {
+        var u = lineOffset(d.source, d.target, nodeSize)
+        var v = lineOffset(d.target, d.source, nodeSize)
+        const dx = v.x - u.x
+            , dy = v.y - u.y
+            , dr = Math.sqrt(dx * dx + dy * dy)
+        return `M ${u.x},${u.y} A ${dr},${dr} 0 0,1 ${v.x},${v.y}` 
+      })
+    edgeLabel
+      .attr('transform', (d) => {
+        const u = d.source
+        const v = d.target
+        const x = (u.x + v.x) / 2
+        const y = (u.y + v.y) / 2
+        return `translate(${x},${y})`
+      })
+    node
+      .attr("transform", (d) => `translate(${d.x},${d.y})`)
+  })
+
+  // precompute 180 steps
+  for (var i = 0; i < 180; i++) {
+    force.tick()
+  }
+
+  force.stop()
+}
+
+function memoize(fn) {
+  var prevArg
+  var prevResult
+  return (arg) => {
+    if (arg !== prevArg) {
+      prevArg = arg
+      prevResult = fn(arg)
+    }
+    return prevResult
+  }
+}
+
+var update = memoize((value) => {
+  var g = particle.compile(value).toJSON()
+  render(g)
+})
+  
+var textarea = document.getElementById('text')
+
+textarea.addEventListener('keyup', (e) => {
+  update(e.target.value)
+})
+
+textarea.dispatchEvent(new Event('keyup'))
+  
+</script>
+  
+</body>
+</html>

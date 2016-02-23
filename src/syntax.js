@@ -14,6 +14,13 @@ function SyntaxToken(token) {
 SyntaxToken.prototype = Object.create(SyntaxNode.prototype)
 SyntaxToken.prototype.constructor = SyntaxToken
 
+SyntaxToken.prototype.toJSON = function() {
+  return {
+    type: 'TOKEN',
+    token: this.token_.toJSON()
+  }
+}
+
 SyntaxToken.prototype.toString = function() {
   return this.token_.s_.toString()
 }
@@ -32,12 +39,46 @@ function SyntaxTree(label, children) {
 SyntaxTree.prototype = Object.create(SyntaxNode.prototype)
 SyntaxTree.prototype.constructor = SyntaxTree
 
+// accessor
+SyntaxTree.prototype.getChildCount = function() {
+  return this.children_.length
+}
+
+// accessor
+SyntaxTree.prototype.getChildAt = function(index) {
+  return this.children_[index]
+}
+
+// Visitor pattern
+SyntaxTree.prototype.accept = function(visitor) {
+  const visit = visitor[this.label_]
+  if (visit) {
+    visit.call(visitor, this)
+  } else {
+    for (let i = 0, count = this.getChildCount(); i < count; i++) {
+      const child = this.getChildAt(i)
+      if (child.constructor === SyntaxTree) {
+        child.accept(visitor)
+      }
+    }
+  }
+}
+
+// for d3 viz
+SyntaxTree.prototype.toJSON = function() {
+  return {
+    type: 'TREE',
+    label: this.label_,
+    children: this.children_.map((child) => child.toJSON())
+  }
+}
+
 function indent(space, level) {
   var s = '\n'
   for (var i = 0, n = space * level; i < n; i++) {
     s += ' '
   }
-  return (x) => 
+  return (x) =>
     x.constructor === SyntaxTree ? s + x.toString(space, level) : x.toString()
 }
 

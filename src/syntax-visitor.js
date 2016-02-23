@@ -1,46 +1,51 @@
 'use strict'
 
-var Immutable = require('immutable')
-
-const CFGraph = require('./control-flow-graph')
-  , Guard = require('./guard')
-
 var syntax = require('./syntax')
   , SyntaxTree = syntax.SyntaxTree
 
-/**
- * @property {Immutable.Stack} stack_
- */
 function SyntaxVisitor() {
-  this.graph_ = new CFGraph()
-  // a quick note about that stack, each visiting function can expect that stack to be non-empty
-  // but upon returning it must ensure that a top of the stack has been replaced with the next
-  // node if any, it should not grow the stack unless there is recursion  
-  this.stack_ = Immutable.Stack()
-  this.negation_ = false
 }
 
+/**
+ * @param {SyntaxTree} node
+ */
+SyntaxVisitor.prototype.__visit__ = function(node) {
+  if (node.constructor !== SyntaxTree) throw new TypeError('node must be SyntaxTree')
+  const visitor = this[node.label_] // lookup visit function based on label
+  if (visitor) {
+    visitor(node)
+  } else {
+    this.__accept__(node)
+  }
+}
+
+/**
+ * @param {SyntaxTree} node
+ */
 SyntaxVisitor.prototype.__accept__ = function(node) {
   if (node.constructor !== SyntaxTree) throw new TypeError('node must be SyntaxTree')
-  this[node.label_](node)
+  const children = node.children_
+  for (let i = 0, end = children.length; i < end; i++) {
+    const childNode = children[i]
+    if (node.constructor === SyntaxTree) {
+      this.__visit__(node)
+    }
+  }  
 }
 
 SyntaxVisitor.prototype.Grammar = function(node) {
-  console.log('visiting Grammar node')
   for (var i = 0; i < node.children_.length; i++) {
     this.__accept__(node.children_[i])
   }
 }
 
 SyntaxVisitor.prototype.Namespace = function(node) {
-  console.log('visiting Namespace node')
   for (var i = 2, end = node.children_.length - 1; i < end; i++) {
     this.__accept__(node.children_[i])
   }
 }
 
 SyntaxVisitor.prototype.Token = function(node) {
-  console.log('visiting Token node')
   const symbol = node.children_[0]
   var root = this.graph_.newNode()
   // todo: define symbol
@@ -57,8 +62,6 @@ SyntaxVisitor.prototype.Token = function(node) {
 
 // literal will grow the stack size
 SyntaxVisitor.prototype.Literal = function(node) {
-  console.log('visiting Literal node')
-  
   const prev = this.stack_.peek()
   this.stack_ = this.stack_.pop() // discard prev
   const next = this.graph_.newNode() // note: we might discard this node
@@ -74,15 +77,12 @@ SyntaxVisitor.prototype.Literal = function(node) {
 }
 
 SyntaxVisitor.prototype.Negation = function(node) {
-  console.log('visiting Negation node')
   this.negation_ = !this.negation_
   this.__accept__(node.children_[1])
   this.negation_ = !this.negation_
 }
 
 SyntaxVisitor.prototype.Quantifier = function(node) {
-  console.log('visiting Quantifier node')
-  
   // Apply the Kleene star to this syntax node
   kleeneStar.call(this, node.children_[0])
 }

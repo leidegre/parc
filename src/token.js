@@ -8,17 +8,17 @@ function Slice(s, begin, end) {
 }
 
 Object.defineProperty(Slice.prototype, 'length', {
-  get: function () {
+  get: function() {
     return this.end_ - this.begin_
   }
 })
 
-Slice.prototype.toString = function () {
+Slice.prototype.toString = function() {
   return this.s_.substring(this.begin_, this.end_)
 }
 
 // JSON.stringify
-Slice.prototype.toJSON = function () {
+Slice.prototype.toJSON = function() {
   return this.toString()
 }
 
@@ -32,8 +32,15 @@ function Token(leading_trivia, type, s, line_num, char_pos) {
 }
 
 // static member
-Token.slice = function (s, begin, end) {
+Token.slice = function(s, begin, end) {
   return new Slice(s, begin, end)
+}
+
+Token.prototype.toJSON = function() {
+  return {
+    type: this.type_,
+    s: this.s_.toString()
+  }
 }
 
 /**
