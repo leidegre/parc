@@ -20,7 +20,12 @@ function GraphEdge(source, target) {
   this.guard_set_ = Immutable.List()
 }
 
-GraphEdge.prototype.addGuard = function (guard) {
+// has guard
+Object.defineProperty(GraphEdge.prototype, 'hasGuard', {
+  get: function() { return this.guard_set_.size > 0 }
+})
+
+GraphEdge.prototype.addGuard = function(guard) {
   this.guard_set_ = this.guard_set_.push(guard)
 }
 
@@ -48,31 +53,31 @@ Graph.prototype.newEdge = function(source, target) {
 
 Graph.prototype.getEdgeListBySource = function(source) {
   const edgeList = this.edges_by_source_.get(source)
-  return edgeList ? edgeList : Immutable.List()  
+  return edgeList ? edgeList : Immutable.List()
 }
 
 Graph.prototype.getEdgeListByTarget = function(target) {
   const edgeList = this.edges_by_target_.get(target)
-  return edgeList ? edgeList : Immutable.List()  
+  return edgeList ? edgeList : Immutable.List()
 }
 
 function edgeComparator(x, y) {
   // by source id, then by target id
-  return x.source_.id_ != y.source_.id_ 
-    ? x.source_.id_ - y.source_.id_ 
-    : x.target_.id_ - y.target_.id_  
+  return x.source_.id_ != y.source_.id_
+    ? x.source_.id_ - y.source_.id_
+    : x.target_.id_ - y.target_.id_
 }
 
 function edgeMap(edge) {
   return {
-    source: edge.source_.id_, 
-    target: edge.target_.id_, 
+    source: edge.source_.id_,
+    target: edge.target_.id_,
     guard_set: edge.guard_set_ ? edge.guard_set_ : undefined,
     is_backlink: edge.is_backlink_
   }
 }
 
-Graph.prototype.toJSON = function () {
+Graph.prototype.toJSON = function() {
   // doesn't matter if we go by source or target but are complete edge lists
   const edges = this.edges_by_source_
     .valueSeq()
