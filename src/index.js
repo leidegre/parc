@@ -40,10 +40,3 @@ module.exports = {
   compile,
   construct
 }
-
-// *sigh*
-try {
-  window.particle = module.exports
-} catch (err) {
-  // not a browser... 
-}
