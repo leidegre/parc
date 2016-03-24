@@ -5,6 +5,17 @@
   <meta charset="utf-8">
   <title></title>
   <style>
+    textarea {
+      border: 1px solid transparent;
+      opacity: 0.5;
+      outline: none;
+      resize: none;
+    }
+    textarea:focus {
+      border: 1px solid #ccc;
+      opacity: 0.95;
+      resize: both;
+    }
     .label {
       text-anchor: middle;
       alignment-baseline: middle;
@@ -16,7 +27,12 @@
 </head>
 
 <body>
-  <textarea name="input" id="input" cols="30" rows="10"></textarea>
+  <textarea name="input" id="input" cols="40" rows="10" autocomplete="false" spellcheck="false">
+"parc" {
+  a = "A" ("B" | "C") "D" +
+    ;
+}
+</textarea>
   <script src='/static/bundle.js' type='text/javascript'></script>
 </body>
 

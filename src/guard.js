@@ -1,5 +1,7 @@
 'use strict'
 
+// see https://jsfiddle.net/2w57zoa4/
+
 const Token = require('./token')
 
 // guards are a canonical representation of consuming some input, they are attached to edges in the control flow graph to tell us what kind/type of input is required to transition through a specific state in the lexer/parser stage. 
@@ -21,10 +23,7 @@ function TokenGuard(not, a, b) {
   this.not_ = not
   this.a_ = getString(a.token_)
   this.b_ = a !== b ? getString(b.token_) : this.a_ // same
-  this.lower_ = a
-  this.upper_ = b
 }
-
 // TokenGuard extends Guard
 TokenGuard.prototype = Object.create(Guard.prototype)
 TokenGuard.prototype.constructor = TokenGuard
@@ -44,6 +43,23 @@ TokenGuard.prototype.equals = function(guard) {
     && (this.b_.localeCompare(y) == 0)
 }
 
+TokenGuard.prototype.sub = function(other) {
+  
+  // create a new guard that does not overlap with other
+  
+  if (other.a_.localeCompare(this.a_) <= 0
+    && other.b_.localeCompare(this.b_) <= 0) {
+    
+  }
+  
+  // 1. does the interval though the lower half, return upper half
+  // 2. does the interval though the upper half, return lower half
+  // 3. is the extent of the interval greater than ours, return empty interval
+  // 3. is the extent of the interval smaller than ours, return non-continuous
+  
+  return  
+}
+
 function getString(token) {
   var s = token.s_.toString()
   return token.type_ == Token.TYPE.STRING_LITERAL ? Token.unescape(s) : s
@@ -52,24 +68,24 @@ function getString(token) {
 TokenGuard.prototype.toJSON = function() {
   return {
     not: this.not_,
-    lower: getString(this.lower_.token_),
-    upper: getString(this.upper_.token_)
+    lower: this.a_,
+    upper: this.b_
   }
 }
 
 TokenGuard.prototype.toString = function () {
-  const lower = getString(this.lower_.token_)
-  const upper = getString(this.upper_.token_)
-  if (lower !== upper) {
+  const a = this.a_
+  const b = this.b_
+  if (a !== b) {
     if (this.not_) {
-      return `]${lower},${upper}[`  
+      return `]${a},${b}[`  
     }
-    return `[${lower},${upper}]`  
+    return `[${a},${b}]`  
   }
   if (this.not_) {
-    return `]${lower}[`  
+    return `]${a}[`  
   }
-  return `[${lower}]`
+  return `[${a}]`
 }
 
 module.exports = Guard

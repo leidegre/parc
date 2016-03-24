@@ -30,6 +30,8 @@ The lexer has the following operations
 
 ## Naming conventions
 
+> https://google.github.io/styleguide/javascriptguide.xml#Naming
+
 When choosing a name, prefer long names to abbreviated names. Prefer descriptive names to arbitrary ones.
 
 > **NOTE:** In no case should any name or label (for a variable, class, namespace, file, and so on) run words together without any kind of delineation (such as an underscore or a change in case according to the standards set herein).
@@ -52,3 +54,11 @@ When choosing a name, prefer long names to abbreviated names. Prefer descriptive
 
 - PascalCase
 - No underscores.
+
+# Testing
+
+## Notes
+
+I'm thinking of a QuickCheck approach to the testing, not sure how to do that, this is just a JavaScript port, not sure about the quality of this.
+
+https://bitbucket.org/darrint/qc.js/raw/19c11f7ea23e43baccfb11b1500502b0eab7427f/src/qc.js

@@ -5,6 +5,8 @@ var assert = require('./assert')
 
 const CFGraph = require('./control-flow-graph')
   , Guard = require('./guard')
+  , Interval = require('./interval')
+  , Token = require('./token')
 
 function Compiler() {
   this.graph_ = new CFGraph()
@@ -16,7 +18,7 @@ function Compiler() {
   this.negation_ = false
 }
 
-Compiler.prototype.Token = function(node) {
+Compiler.prototype.Token = function (node) {
   const symbol = node.children_[0]
   // todo: define last as new symbol
   this.stack_ = this.stack_.push(this.root_)
@@ -33,36 +35,66 @@ Compiler.prototype.Token = function(node) {
   last.is_accept_state_ = true
 }
 
-// literal will grow the stack size
-Compiler.prototype.Literal = function(node) {
+function insertGuard(guard) {
   const prev = this.stack_.peek()
   this.stack_ = this.stack_.pop() // discard prev
-  
-  // traverse prev
-  
-  var guard = Guard.fromLiteral(this.negation_, node.children_[0])
-  
+
   const edgeList = this.graph_.getEdgeListBySource(prev)
-  const overlappingEdge = edgeList.find((edge) => edge.guard_set_.find((g) => g.overlaps(guard)))
-  
+  const overlappingEdge = edgeList.find((edge) => edge.guard_set_.find((g) => g.overlaps(guard))) 
+
   if (overlappingEdge) {
     const overlappingGuard = overlappingEdge.guard_set_.find((g) => g.overlaps(guard))
     if (overlappingGuard.equals(guard)) {
       // we can share this edge
-      this.stack_ = this.stack_.push(overlappingEdge.target_)  
+      this.stack_ = this.stack_.push(overlappingEdge.target_)
     } else {
       // todo: we need to split this edge
-      throw new Error('Not implemented.')
+      throw new Error('Edge splitting. Not implemented.')
+      
+      // The presence of a overlapping guard token could be an ambiguity 
+      // but it doesn't have to be.
+      
+      // If we modify the edge/guard, we have to ensure that there's still 
+      // an equivalent transition between source and target.
+      
+      // A persistent data structure might be helpful here.
+      
+      // [A, B], [B, C]
+      // [A], [B], [C]
+      
+      // [A] is left as a valid path to target
+      // [B] is a new path, from [B] we can go to [A]'s target or [C]'s target
+      // [C] is a new path
+      
     }
   } else {
     const next = this.graph_.newNode()
     const edge = this.graph_.newEdge(prev, next)
     edge.addGuard(guard)
-    this.stack_ = this.stack_.push(next)  
+    this.stack_ = this.stack_.push(next)
   }
 }
 
-Compiler.prototype.Negation = function(node) {
+function getString(token) {
+  var s = token.s_.toString()
+  return token.type_ == Token.TYPE.STRING_LITERAL ? Token.unescape(s) : s
+}
+
+// literal will grow the stack size
+Compiler.prototype.Literal = function (node) {
+  let code_unit = getString(node.children_[0].token_).charCodeAt(0)
+  let guard = new Interval(code_unit, code_unit)
+  insertGuard.call(this, guard)
+}
+
+Compiler.prototype.Range = function (node) {
+  let code_unit_a = getString(node.getChildAt(0).getChildAt(0).token_).charCodeAt(0)
+  let code_unit_b = getString(node.getChildAt(2).getChildAt(0).token_).charCodeAt(0)
+  let guard = new Interval(code_unit_a, code_unit_b)
+  insertGuard.call(this, guard)
+}
+
+Compiler.prototype.Negation = function (node) {
   this.negation_ = !this.negation_
   node.children_[1].accept(this)
   this.negation_ = !this.negation_
@@ -74,36 +106,49 @@ Compiler.prototype.Choice = function (node) {
   this.stack_ = this.stack_.pop() // pop prev
   
   const enter = this.graph_.newNode()
-  
+
   this.stack_ = this.stack_.push(enter)
   node.getChildAt(0).accept(this)
-  
+
   const left = this.stack_.peek()
   this.stack_ = this.stack_.pop() // pop left
   
   this.stack_ = this.stack_.push(enter)
   node.getChildAt(2).accept(this)
-  
+
   const right = this.stack_.peek()
   this.stack_ = this.stack_.pop() // pop right
   
   const leave = this.graph_.newNode()
   this.stack_ = this.stack_.push(leave)
-  
+
   this.graph_.newEdge(prev, enter)
   this.graph_.newEdge(left, leave)
   this.graph_.newEdge(right, leave)
 }
 
-Compiler.prototype.Quantifier = function(node) {
+Compiler.prototype.Quantifier = function (node) {
   // Apply the Kleene star to this syntax node
-  kleeneStar.call(this, node.children_[0])
+  switch (node.children_[1].token_.type_) {
+    case Token.TYPE.ASTERISK: {
+      kleeneStar.call(this, node.children_[0], false, true)
+      break
+    }
+    case Token.TYPE.PLUS_SIGN: {
+      kleeneStar.call(this, node.children_[0], true, true)
+      break
+    }
+    case Token.TYPE.QUESTION_MARK: {
+      kleeneStar.call(this, node.children_[0], false, false)
+      break
+    }
+  }
 }
 
 // The Kleene star is simply a construction that allows for any number of repetitions of a syntax rule
 // Since we're trying to build a NFA we can use dummy nodes (e-closure) for enter/leave states.
 // This all works out very well.
-function kleeneStar(node, kleenePlus) {
+function kleeneStar(node, kleenePlus, repeated) {
   
   // applying the Kleene star like this easy but I think it could be wrong
   // the dummy enter node is hiding the fact that we
@@ -123,7 +168,7 @@ function kleeneStar(node, kleenePlus) {
   this.graph_.newEdge(begin, enter)
   this.graph_.newEdge(end, leave)
   if (!kleenePlus) this.graph_.newEdge(enter, leave) // The Kleene star is optional but the Kleene plus is not
-  this.graph_.newEdge(leave, enter).is_backlink_ = true // repeated
+  if (repeated) this.graph_.newEdge(leave, enter).is_backlink_ = true // repeated
   this.stack_ = this.stack_.push(leave)
 }
 
