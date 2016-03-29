@@ -23,6 +23,7 @@
   "homepage": "https://github.com/leidegre/parc#readme",
   "devDependencies": {
     "d3": "^3.5.16",
+    "eslint": "^2.4.0",
     "express": "^4.13.4",
     "immutable": "^3.7.6",
     "tape": "^4.4.0",

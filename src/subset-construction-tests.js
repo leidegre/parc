@@ -10,9 +10,9 @@ function show(dfa, set) {
     return set
   }
   set = set.add(dfa.id) // no "loops"
-  console.log(`state [${dfa.id}]`)
+  console.log('#', `state [${dfa.id}]`)
   for (let x of dfa.transitions_) {
-    console.log(` -> ${x[0]} [${x[1].id}]`)
+    console.log('#', ` -> ${x[0]} [${x[1].id}]`)
   }
   for (let x of dfa.transitions_) {
     set = show(x[1], set)
